@@ -1,11 +1,10 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import logo from "../../assets/star.png";
+import { api } from "../../utils/api";
 
-function BillMaker() {
-  const navigate = useNavigate();
+function BillMaker({ darkMode }) {
   const [rows, setRows] = useState([
     {
       id: 1,
@@ -22,47 +21,22 @@ function BillMaker() {
   const [partyName, setPartyName] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [billId, setBillId] = useState(null);
-  const [previousBalance, setPreviousBalance] = useState(0);
+  const [balance, setBalance] = useState(0);
+  const [includeBalance, setIncludeBalance] = useState(true);
   const inputRefs = useRef([]);
 
   const typeOptions = ["Book", "Pad", "Tag", "Register", "Other"];
-  const sizeOptions = ["1/3", "1/4", "1/5", "1/6", "1/8", "1/10", "1/12", "1/16", "Other"];
-
-  useEffect(() => {
-    const fetchLatestBillByParty = async () => {
-      if (!partyName.trim()) {
-        setPreviousBalance(0);
-        return;
-      }
-
-      try {
-        const response = await fetch(
-          `http://localhost:5000/api/bills/party/${encodeURIComponent(partyName)}`,
-          {
-            method: "GET",
-            headers: { "Content-Type": "application/json" },
-          }
-        );
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            setPreviousBalance(0);
-            return;
-          }
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Failed to fetch latest bill");
-        }
-
-        const bill = await response.json();
-        setPreviousBalance(bill.balance || 0);
-      } catch (error) {
-        console.error("Fetch latest bill error:", error);
-        setPreviousBalance(0);
-      }
-    };
-
-    fetchLatestBillByParty();
-  }, [partyName]);
+  const sizeOptions = [
+    "1/3",
+    "1/4",
+    "1/5",
+    "1/6",
+    "1/8",
+    "1/10",
+    "1/12",
+    "1/16",
+    "Other",
+  ];
 
   useEffect(() => {
     if (inputRefs.current.length > 0) {
@@ -116,20 +90,9 @@ function BillMaker() {
     }
 
     try {
-      const response = await fetch(
-        `http://localhost:5000/api/bills/serial/${serialNumber}`,
-        {
-          method: "GET",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      const response = await api.get(`/bills/serial/${serialNumber}`);
+      const bill = response.data;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Bill not found");
-      }
-
-      const bill = await response.json();
       setPartyName(bill.partyName);
       setRows(
         bill.rows.map((row) => ({
@@ -141,10 +104,36 @@ function BillMaker() {
       );
       setBillId(bill._id);
       setSerialNumber(bill.serialNumber.toString());
-      setPreviousBalance(bill.balance || 0);
+      setBalance(bill.balance);
+      setIncludeBalance(bill.includeBalance ?? true);
     } catch (error) {
       console.error("Fetch error:", error);
-      alert(`Failed to fetch bill: ${error.message}`);
+      const errorMessage =
+        error.response?.data?.message || error.message || "Bill not found";
+      alert(`Failed to fetch bill: ${errorMessage}`);
+    }
+  };
+
+  const fetchPartyBalance = async () => {
+    if (!partyName.trim()) {
+      alert("Please enter a party name");
+      return;
+    }
+
+    try {
+      const response = await api.get(
+        `/bills/party/${encodeURIComponent(partyName)}`
+      );
+      const { balance, matchedPartyNames } = response.data;
+
+      if (matchedPartyNames.length > 0) {
+        setPartyName(matchedPartyNames[0]);
+        setBalance(balance);
+      }
+    } catch (error) {
+      console.error("Balance fetch error:", error);
+      const errorMessage = error.response?.data?.message || error.message;
+      alert(`Failed to fetch balance: ${errorMessage}`);
     }
   };
 
@@ -153,13 +142,11 @@ function BillMaker() {
       throw new Error("Party name is required");
     }
 
-    const currentTotal = rows.reduce((acc, row) => acc + (parseFloat(row.total) || 0), 0);
-    const balance = currentTotal + previousBalance;
-
+    const currentTotal = rows.reduce((acc, row) => acc + row.total, 0);
     const billData = {
       partyName,
       rows: rows.map((row) => ({
-        id: Number(row.id),
+        id: row.id,
         particulars: row.particulars || "",
         type: row.type || "",
         size: row.size || "",
@@ -167,72 +154,31 @@ function BillMaker() {
         customSize: row.customSize || "",
         quantity: parseFloat(row.quantity) || 0,
         rate: parseFloat(row.rate) || 0,
-        total: parseFloat(row.total) || 0,
+        total: row.total || 0,
       })),
-      total: currentTotal,
-      advance: 0,
-      previousBalance,
-      balance,
+      total: includeBalance ? currentTotal + balance : currentTotal,
+      includeBalance,
     };
 
     try {
-      const url = billId
-        ? `http://localhost:5000/api/bills/id/${billId}`
-        : "http://localhost:5000/api/bills";
-      const method = billId ? "PUT" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(billData),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to save bill");
+      let response;
+      if (billId) {
+        response = await api.put(`/bills/id/${billId}`, billData);
+      } else {
+        response = await api.post("/bills", billData);
       }
 
-      const savedBill = await response.json();
+      const savedBill = response.data;
       setBillId(savedBill._id);
       setSerialNumber(savedBill.serialNumber.toString());
+      setBalance(savedBill.balance);
+      setIncludeBalance(savedBill.includeBalance ?? true);
       return savedBill;
     } catch (error) {
       console.error("Save error:", error);
-      throw error;
-    }
-  };
-
-  const handleSeeInvoice = async () => {
-    if (!partyName.trim()) {
-      alert("Party name is required");
-      return;
-    }
-
-    try {
-      const savedBill = await saveBill();
-      const currentTotal = rows.reduce((acc, row) => acc + (parseFloat(row.total) || 0), 0);
-      const billData = {
-        partyName,
-        serialNumber: savedBill.serialNumber.toString(),
-        date: new Date().toLocaleDateString(),
-        rows: rows.map((row) => ({
-          description: [
-            row.particulars || "",
-            row.type === "Other" ? row.customType || "" : row.type || "",
-            row.size === "Other" ? row.customSize || "" : row.size || "",
-          ].filter(Boolean).join(" "),
-          quantity: parseFloat(row.quantity) || 0,
-          rate: parseFloat(row.rate) || 0,
-          total: parseFloat(row.total) || 0,
-        })),
-        currentTotal,
-        previousBalance,
-        grandTotal: currentTotal + previousBalance,
-      };
-      navigate("/invoices", { state: billData });
-    } catch (error) {
-      console.error("See invoice error:", error);
-      alert(`Failed to view invoice: ${error.message}`);
+      const errorMessage =
+        error.response?.data?.message || error.message || "Failed to save bill";
+      throw new Error(errorMessage);
     }
   };
 
@@ -242,38 +188,36 @@ function BillMaker() {
       alert("Bill name is required");
       return;
     }
-
+  
     try {
       const savedBill = await saveBill();
-      const currentSerialNumber = savedBill.serialNumber.toString();
-
+  
       const doc = new jsPDF();
       const date = new Date().toLocaleDateString();
       const fileDate = new Date().toISOString().slice(0, 10);
       const currentTotal = rows.reduce((acc, row) => acc + row.total, 0);
-      const grandTotal = currentTotal + previousBalance;
+      const total = includeBalance ? currentTotal + balance : currentTotal;
       const pageWidth = 210;
-
+  
+      // Header Section
       doc.setFillColor(245, 245, 245);
       doc.rect(0, 0, pageWidth, 30, "F");
-
+  
       const logoWidth = 20;
       const companyName = "Star Printing";
       doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.setTextColor(40, 40, 40);
       const textWidth = doc.getTextWidth(companyName);
       const totalWidth = logoWidth + textWidth;
       const startX = (pageWidth - totalWidth) / 2;
-
+  
       try {
         doc.addImage(logo, "PNG", startX, 5, logoWidth, 20);
-        doc.text(companyName, startX + logoWidth, 15);
+        doc.text(companyName, startX + logoWidth + 2, 15);
       } catch (error) {
-        console.error("Logo error:", error);
         doc.text(companyName, (pageWidth - textWidth) / 2, 15);
       }
-
+  
       doc.setFontSize(10);
       doc.setTextColor(100, 100, 100);
       doc.setFont("helvetica", "bold");
@@ -285,102 +229,111 @@ function BillMaker() {
         27,
         { align: "center" }
       );
-
+  
+      // Divider
       doc.setDrawColor(100, 100, 100);
       doc.setLineWidth(0.5);
       doc.line(14, 30, 196, 30);
-
+  
+      // Metadata
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(40, 40, 40);
       doc.text(`Date: ${date}`, 196, 10, { align: "right" });
-      doc.text(`Serial No: ${currentSerialNumber}`, 196, 15, { align: "right" });
+      doc.text(`Serial No: ${savedBill.serialNumber}`, 196, 15, { align: "right" });
+  
       if (partyName) {
         doc.setFontSize(15);
         doc.text(`Name: ${partyName}`, 14, 40);
       }
-
+  
+      // Table Columns & Data
       const columns = ["#", "Particulars", "Qty", "Rate", "Amount"];
-      const data = rows.map((row) => {
-        const particularsCombined = [
-          row.particulars || "",
-          row.type === "Other" ? row.customType || "" : row.type || "",
-          row.size === "Other" ? row.customSize || "" : row.size || "",
+      const data = rows.map((row) => [
+        row.id,
+        [
+          row.particulars,
+          row.type === "Other" ? row.customType : row.type,
+          row.size === "Other" ? row.customSize : row.size,
         ]
           .filter(Boolean)
-          .join(" ");
-        return [
-          row.id,
-          particularsCombined || "",
-          row.quantity || "",
-          `Rs. ${parseFloat(row.rate || 0).toFixed(2)}`,
-          `Rs. ${row.total.toFixed(2)}`,
-        ];
-      });
-
+          .join(" "),
+        row.quantity,
+        `Rs. ${parseFloat(row.rate || 0).toFixed(2)}`,
+        `Rs. ${row.total.toFixed(2)}`,
+      ]);
+  
+      // Add totals
+      if (balance !== 0 && includeBalance) {
+        data.push(["", "Current Total", "", "", `Rs. ${currentTotal.toFixed(2)}`]);
+        data.push(["", "Balance", "", "", `Rs. ${balance.toFixed(2)}`]);
+        data.push(["", "Total", "", "", `Rs. ${total.toFixed(2)}`]);
+      } else {
+        data.push(["", "Total", "", "", `Rs. ${total.toFixed(2)}`]);
+      }
+  
+      // Pretty Table
       autoTable(doc, {
         startY: partyName ? 45 : 35,
         head: [columns],
         body: data,
         theme: "grid",
-        styles: { fontSize: 10, cellPadding: 2, halign: "center" },
+        styles: {
+          fontSize: 10,
+          cellPadding: { top: 2, right: 4, bottom: 2, left: 4 },
+          textColor: [40, 40, 40],
+          lineColor: [220, 220, 220],
+          lineWidth: 0.2,
+          valign: "middle",
+        },
         headStyles: {
           fillColor: [41, 41, 41],
           textColor: 255,
           fontStyle: "bold",
+          halign: "center",
+          lineWidth: 0.5,
+          lineColor: [100, 100, 100],
         },
-        bodyStyles: { textColor: [40, 40, 40] },
-        alternateRowStyles: { fillColor: [245, 245, 245] },
         columnStyles: {
-          0: { cellWidth: 10 },
-          1: { halign: "left" },
-          2: { cellWidth: 15 },
-          3: { cellWidth: 20 },
-          4: { cellWidth: 25 },
+          0: { cellWidth: 18, halign: "center" }, // #
+          1: { cellWidth: 75, halign: "left" },   // Particulars (reduced)
+          2: { cellWidth: 20, halign: "center" }, // Qty
+          3: { cellWidth: 25, halign: "right" },  // Rate
+          4: { cellWidth: 35, halign: "right" },  // Amount (increased)
+        },
+        didParseCell: (data) => {
+          const rowIndex = data.row.index;
+          const isTotalRow = rowIndex >= rows.length;
+      
+          // Alternate background
+          if (!isTotalRow && data.row.section === "body") {
+            data.cell.styles.fillColor = rowIndex % 2 === 0 ? [255, 255, 255] : [245, 245, 245];
+          }
+      
+          // Styling for total rows
+          if (isTotalRow && data.row.section === "body") {
+            data.cell.styles.fontStyle = "bold";
+            data.cell.styles.fillColor = [240, 240, 255];
+            if (data.column.index === 4) data.cell.styles.halign = "right";
+            if (data.column.index === 1) data.cell.styles.halign = "left";
+          }
         },
       });
-
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "bold");
-      doc.text(
-        `Current Total: Rs.${currentTotal.toFixed(2)}`,
-        190,
-        doc.lastAutoTable.finalY + 10,
-        { align: "right" }
-      );
-
-      if (previousBalance > 0) {
-        doc.setFontSize(12);
-        doc.setFont("helvetica", "normal");
-        doc.text(
-          `Previous Balance: Rs.${previousBalance.toFixed(2)}`,
-          190,
-          doc.lastAutoTable.finalY + 20,
-          { align: "right" }
-        );
-      }
-
-      doc.setFontSize(15);
-      doc.setFont("helvetica", "bold");
-      doc.text(
-        `Grand Total: Rs.${grandTotal.toFixed(2)}`,
-        190,
-        doc.lastAutoTable.finalY + (previousBalance > 0 ? 30 : 20),
-        { align: "right" }
-      );
-
+      // Footer
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
       doc.text("Thank you for choosing Star Printing!", 105, 285, { align: "center" });
       doc.text("For any queries, contact us at +91 9350432551", 105, 290, { align: "center" });
-
-      const finalFileName = `${fileName}_${currentSerialNumber}_${fileDate}`;
+  
+      // Save
+      const finalFileName = `${fileName}_${partyName || "Bill"}_${fileDate}`;
       doc.save(finalFileName + ".pdf");
     } catch (error) {
       console.error("PDF generation error:", error);
       alert(`Failed to generate PDF: ${error.message}`);
     }
   };
+  
 
   const clearForm = () => {
     setRows([
@@ -399,202 +352,342 @@ function BillMaker() {
     setPartyName("");
     setSerialNumber("");
     setBillId(null);
-    setPreviousBalance(0);
+    setBalance(0);
+    setIncludeBalance(true);
   };
 
   const currentTotal = rows.reduce((acc, row) => acc + row.total, 0);
-  const grandTotal = currentTotal + previousBalance;
+  const total = includeBalance ? currentTotal + balance : currentTotal;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto bg-white shadow-xl rounded-lg">
-      <h2 className="text-2xl font-bold mb-4 text-center text-white bg-blue-600 p-2 rounded flex items-center justify-center">
-        <img src={logo} alt="Logo" className="w-16 h-12 mr-2" />
-        Star Printing - Bill Maker
-      </h2>
-
-      <div className="mb-4 flex gap-4 justify-center">
-        <input
-          type="text"
-          placeholder="Enter Party Name"
-          value={partyName}
-          onChange={(e) => setPartyName(e.target.value)}
-          className="px-4 py-2 border rounded-lg text-center w-64"
-        />
-        <input
-          type="text"
-          placeholder="Serial Number"
-          value={serialNumber}
-          onChange={(e) => setSerialNumber(e.target.value)}
-          className="px-4 py-2 border rounded-lg text-center w-32"
-        />
-        <button
-          onClick={fetchBillBySerial}
-          className="bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-2 px-4 rounded hover:scale-105 transition-transform"
+    <div
+      className={`min-h-screen p-4 sm:p-6 max-w-5xl mx-auto ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
+        }`}
+    >
+      <div
+        className={`rounded-lg shadow-lg p-6 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+          } border`}
+      >
+        <h2
+          className={`text-xl sm:text-2xl font-bold mb-6 text-center text-white ${darkMode ? "bg-blue-500" : "bg-blue-600"
+            } p-3 rounded-lg flex items-center justify-center`}
         >
-          Fetch Bill
-        </button>
-      </div>
+          <img src={logo} alt="Star Printing Logo" className="w-12 h-12 mr-2" />
+          Star Printing - Bill Maker
+        </h2>
 
-      {previousBalance > 0 && (
-        <div className="mb-4 text-lg font-semibold text-red-600 text-center">
-          Previous Balance: Rs.{previousBalance.toFixed(2)}
+        <div className="mb-6 flex flex-col sm:flex-row gap-4 justify-between items-center">
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Enter Party Name"
+              value={partyName}
+              onChange={(e) => setPartyName(e.target.value)}
+              onBlur={fetchPartyBalance}
+              className={`w-full sm:w-64 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${darkMode
+                ? "bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-500"
+                : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-600"
+                }`}
+              aria-label="Enter party name"
+            />
+            <button
+              onClick={fetchPartyBalance}
+              className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${darkMode
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+              aria-label="Fetch party balance"
+            >
+              Get Balance
+            </button>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+            <input
+              type="text"
+              placeholder="Serial Number"
+              value={serialNumber}
+              onChange={(e) => setSerialNumber(e.target.value)}
+              className={`w-full sm:w-40 px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${darkMode
+                ? "bg-gray-700 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-500"
+                : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-600"
+                }`}
+              aria-label="Enter serial number"
+            />
+            <button
+              onClick={fetchBillBySerial}
+              className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${darkMode
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+              aria-label="Fetch bill by serial number"
+            >
+              Fetch Bill
+            </button>
+          </div>
         </div>
-      )}
 
-      <table className="w-full border-collapse border border-gray-300 text-sm">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="border p-2 w-12">#</th>
-            <th className="border p-2">Particulars</th>
-            <th className="border p-2 w-24">Type</th>
-            <th className="border p-2 w-24">Size</th>
-            <th className="border p-2 w-16">Qty</th>
-            <th className="border p-2 w-16">Rate</th>
-            <th className="border p-2 w-24">Amount</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => (
-            <tr key={row.id}>
-              <td className="border p-2 text-center">{row.id}</td>
-              <td className="border p-2">
-                <input
-                  ref={(el) => {
-                    if (el) inputRefs.current[index * 5] = el;
-                  }}
-                  className="w-full p-1 bg-transparent focus:outline-none text-center"
-                  value={row.particulars}
-                  onChange={(e) => updateRow(index, "particulars", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, index, "particulars")}
-                />
-              </td>
-              <td className="border p-2 text-center">
-                {row.type === "Other" ? (
-                  <input
-                    ref={(el) => {
-                      if (el) inputRefs.current[index * 5 + 1] = el;
-                    }}
-                    className="p-1 bg-transparent border-none focus:outline-none text-center w-full"
-                    value={row.customType}
-                    onChange={(e) => updateRow(index, "customType", e.target.value)}
-                    placeholder="Custom type"
-                    onKeyDown={(e) => handleKeyDown(e, index, "customType")}
-                  />
-                ) : (
-                  <select
-                    ref={(el) => {
-                      if (el) inputRefs.current[index * 5 + 1] = el;
-                    }}
-                    className="p-1 bg-transparent border-none focus:outline-none w-full text-center"
-                    value={row.type}
-                    onChange={(e) => updateRow(index, "type", e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, index, "type")}
+        <div className="overflow-x-auto">
+          <table
+            className={`w-full border-collapse border text-sm ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+              }`}
+          >
+            <thead className={`${darkMode ? "bg-gray-700" : "bg-gray-100"}`}>
+              <tr>
+                <th className="border p-2 w-12 font-semibold">S.No</th>
+                <th className="border p-2 text-left font-semibold">
+                  Particulars
+                </th>
+                <th className="border p-2 w-24 font-semibold">Type</th>
+                <th className="border p-2 w-24 font-semibold">Size</th>
+                <th className="border p-2 w-16 font-semibold">Qty</th>
+                <th className="border p-2 w-16 font-semibold">Rate</th>
+                <th className="border p-2 w-24 font-semibold">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => (
+                <tr
+                  key={row.id}
+                  className={`border-t transition-colors ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"
+                    }`}
+                >
+                  <td
+                    className={`border p-2 text-center ${darkMode ? "text-gray-100" : "text-gray-900"
+                      }`}
                   >
-                    <option value="">Select</option>
-                    {typeOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                )}
-              </td>
-              <td className="border p-2 text-center">
-                {row.size === "Other" ? (
-                  <input
-                    ref={(el) => {
-                      if (el) inputRefs.current[index * 5 + 2] = el;
-                    }}
-                    className="p-1 bg-transparent border-none focus:outline-none text-center w-full"
-                    value={row.customSize}
-                    onChange={(e) => updateRow(index, "customSize", e.target.value)}
-                    placeholder="Custom size"
-                    onKeyDown={(e) => handleKeyDown(e, index, "customSize")}
-                  />
-                ) : (
-                  <select
-                    ref={(el) => {
-                      if (el) inputRefs.current[index * 5 + 2] = el;
-                    }}
-                    className="p-1 bg-transparent border-none focus:outline-none w-full text-center"
-                    value={row.size}
-                    onChange={(e) => updateRow(index, "size", e.target.value)}
-                    onKeyDown={(e) => handleKeyDown(e, index, "size")}
+                    {row.id}
+                  </td>
+                  <td className="border p-2">
+                    <input
+                      ref={(el) => (inputRefs.current[index * 5] = el)}
+                      className={`w-full p-1 ${darkMode
+                        ? "bg-gray-700 text-gray-100"
+                        : "bg-gray-50 text-gray-900"
+                        } focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 rounded`}
+                      value={row.particulars}
+                      onChange={(e) =>
+                        updateRow(index, "particulars", e.target.value)
+                      }
+                      onKeyDown={(e) => handleKeyDown(e, index, "particulars")}
+                      placeholder="Enter particulars"
+                      aria-label={`Particulars for row ${row.id}`}
+                    />
+                  </td>
+                  <td className="border p-2">
+                    {row.type === "Other" ? (
+                      <input
+                        ref={(el) => (inputRefs.current[index * 5 + 1] = el)}
+                        className={`w-full p-1 ${darkMode
+                          ? "bg-gray-700 text-gray-100"
+                          : "bg-gray-50 text-gray-900"
+                          } focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 rounded`}
+                        value={row.customType}
+                        onChange={(e) =>
+                          updateRow(index, "customType", e.target.value)
+                        }
+                        placeholder="Custom type"
+                        onKeyDown={(e) => handleKeyDown(e, index, "customType")}
+                        aria-label={`Custom type for row ${row.id}`}
+                      />
+                    ) : (
+                      <select
+                        ref={(el) => (inputRefs.current[index * 5 + 1] = el)}
+                        className={`w-full p-1 ${darkMode
+                          ? "bg-gray-700 text-gray-100"
+                          : "bg-gray-50 text-gray-900"
+                          } focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 rounded`}
+                        value={row.type}
+                        onChange={(e) =>
+                          updateRow(index, "type", e.target.value)
+                        }
+                        onKeyDown={(e) => handleKeyDown(e, index, "type")}
+                        aria-label={`Type for row ${row.id}`}
+                      >
+                        <option value="">Select</option>
+                        {typeOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    {row.size === "Other" ? (
+                      <input
+                        ref={(el) => (inputRefs.current[index * 5 + 2] = el)}
+                        className={`w-full p-1 ${darkMode
+                          ? "bg-gray-700 text-gray-100"
+                          : "bg-gray-50 text-gray-900"
+                          } focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 rounded`}
+                        value={row.customSize}
+                        onChange={(e) =>
+                          updateRow(index, "customSize", e.target.value)
+                        }
+                        placeholder="Custom size"
+                        onKeyDown={(e) => handleKeyDown(e, index, "customSize")}
+                        aria-label={`Custom size for row ${row.id}`}
+                      />
+                    ) : (
+                      <select
+                        ref={(el) => (inputRefs.current[index * 5 + 2] = el)}
+                        className={`w-full p-1 ${darkMode
+                          ? "bg-gray-700 text-gray-100"
+                          : "bg-gray-50 text-gray-900"
+                          } focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 rounded`}
+                        value={row.size}
+                        onChange={(e) =>
+                          updateRow(index, "size", e.target.value)
+                        }
+                        onKeyDown={(e) => handleKeyDown(e, index, "size")}
+                        aria-label={`Size for row ${row.id}`}
+                      >
+                        <option value="">Select</option>
+                        {sizeOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </td>
+                  <td className="border p-2">
+                    <input
+                      ref={(el) => (inputRefs.current[index * 5 + 3] = el)}
+                      type="number"
+                      className={`w-full p-1 ${darkMode
+                        ? "bg-gray-700 text-gray-100"
+                        : "bg-gray-50 text-gray-900"
+                        } focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 rounded`}
+                      value={row.quantity}
+                      onChange={(e) =>
+                        updateRow(index, "quantity", e.target.value)
+                      }
+                      onKeyDown={(e) => handleKeyDown(e, index, "quantity")}
+                      placeholder="Qty"
+                      aria-label={`Quantity for row ${row.id}`}
+                    />
+                  </td>
+                  <td className="border p-2">
+                    <input
+                      ref={(el) => (inputRefs.current[index * 5 + 4] = el)}
+                      type="number"
+                      className={`w-full p-1 ${darkMode
+                        ? "bg-gray-700 text-gray-100"
+                        : "bg-gray-50 text-gray-900"
+                        } focus:outline-none focus:ring-2 focus:ring-blue-600 dark:focus:ring-blue-500 rounded`}
+                      value={row.rate}
+                      onChange={(e) =>
+                        updateRow(index, "rate", e.target.value)
+                      }
+                      onKeyDown={(e) => handleKeyDown(e, index, "rate")}
+                      placeholder="Rate"
+                      aria-label={`Rate for row ${row.id}`}
+                    />
+                  </td>
+                  <td
+                    className={`border p-2 text-center font-medium ${darkMode ? "text-gray-100" : "text-gray-900"
+                      }`}
                   >
-                    <option value="">Select</option>
-                    {sizeOptions.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                  </select>
-                )}
-              </td>
-              <td className="border p-2 text-center">
-                <input
-                  ref={(el) => {
-                    if (el) inputRefs.current[index * 5 + 3] = el;
-                  }}
-                  type="number"
-                  className="p-1 bg-transparent border-none focus:outline-none text-center w-full"
-                  value={row.quantity}
-                  onChange={(e) => updateRow(index, "quantity", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, index, "quantity")}
-                />
-              </td>
-              <td className="border p-2 text-center">
-                <input
-                  ref={(el) => {
-                    if (el) inputRefs.current[index * 5 + 4] = el;
-                  }}
-                  type="number"
-                  className="p-1 bg-transparent border-none focus:outline-none text-center w-full"
-                  value={row.rate}
-                  onChange={(e) => updateRow(index, "rate", e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(e, index, "rate")}
-                />
-              </td>
-              <td className="border p-2 text-center">Rs. {row.total.toFixed(2)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <div className="flex justify-between items-center mt-4">
-        <div className="flex gap-4">
-          <button
-            onClick={addRow}
-            className="bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded hover:scale-105 transition-transform"
-          >
-            Add Row
-          </button>
-          <button
-            onClick={removeRow}
-            className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded hover:scale-105 transition-transform"
-          >
-            Remove Row
-          </button>
-          <button
-            onClick={generatePDF}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded hover:scale-105 transition-transform"
-          >
-            {billId ? "Update & Generate PDF" : "Save & Generate PDF"}
-          </button>
-          <button
-            onClick={clearForm}
-            className="bg-gray-600 hover:bg-gray-700 text-white font-semibold py-2 px-4 rounded hover:scale-105 transition-transform"
-          >
-            Clear Form
-          </button>
-          <button
-            onClick={handleSeeInvoice}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded hover:scale-105 transition-transform"
-          >
-            See Invoice
-          </button>
+                    Rs. {row.total.toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div className="text-lg font-bold">
-          <div>Current Total: Rs.{currentTotal.toFixed(2)}</div>
-          {previousBalance > 0 && (
-            <div>Previous Balance: Rs.{previousBalance.toFixed(2)}</div>
+
+        <div className="mt-4">
+          {balance !== 0 && (
+            <label
+              className={`flex items-center gap-2 ${darkMode ? "text-gray-100" : "text-gray-900"
+                }`}
+            >
+              <input
+                type="checkbox"
+                checked={includeBalance}
+                onChange={(e) => setIncludeBalance(e.target.checked)}
+                className={`h-4 w-4 rounded border focus:ring-2 ${darkMode
+                  ? "bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-500"
+                  : "bg-gray-50 border-gray-300 text-blue-600 focus:ring-blue-600"
+                  }`}
+                aria-label="Include previous balance in total"
+              />
+              Include previous balance in total
+            </label>
           )}
-          <div>Grand Total: Rs.{grandTotal.toFixed(2)}</div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
+          <div className="flex flex-wrap gap-3">
+            <button
+              onClick={addRow}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${darkMode
+                ? "bg-green-500 text-white hover:bg-green-600"
+                : "bg-green-600 text-white hover:bg-green-700"
+                }`}
+              aria-label="Add new row"
+            >
+              Add Row
+            </button>
+            <button
+              onClick={removeRow}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${darkMode
+                ? "bg-red-500 text-white hover:bg-red-600"
+                : "bg-red-600 text-white hover:bg-red-700"
+                }`}
+              aria-label="Remove last row"
+            >
+              Remove Row
+            </button>
+            <button
+              onClick={generatePDF}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${darkMode
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+              aria-label={
+                billId ? "Update and generate PDF" : "Save and generate PDF"
+              }
+            >
+              {billId ? "Update & Generate PDF" : "Save & Generate PDF"}
+            </button>
+            <button
+              onClick={clearForm}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${darkMode
+                ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
+                : "bg-gray-600 text-white hover:bg-gray-700"
+                }`}
+              aria-label="Clear form"
+            >
+              Clear Form
+            </button>
+          </div>
+
+          <div className="flex flex-col items-end">
+            {balance !== 0 && includeBalance && (
+              <>
+                <div
+                  className={`text-lg font-bold ${darkMode ? "text-gray-100" : "text-gray-800"
+                    }`}
+                >
+                  Current Total: Rs.{currentTotal.toFixed(2)}
+                </div>
+                <div
+                  className={`text-sm font-medium ${darkMode ? "text-red-400" : "text-red-600"
+                    }`}
+                >
+                  Balance: Rs.{balance.toFixed(2)}
+                </div>
+              </>
+            )}
+            <div
+              className={`text-lg font-bold ${darkMode ? "text-gray-100" : "text-gray-800"
+                }`}
+            >
+              Total: Rs.{total.toFixed(2)}
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -4,12 +4,11 @@ import { BarChart3, FileText, Settings, User, TrendingUp, DollarSign, FileText a
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import Toast from "../components/common/Toast";
 
-const Home = () => {
+const Home = ({ darkMode, toggleDarkMode }) => {
   const navigate = useNavigate();
   const chartContainerRef = useRef(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 500, height: 300 });
   const [toast, setToast] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
 
   // Mock data for summary metrics
   const summaryData = [
@@ -108,12 +107,32 @@ const Home = () => {
       if (this.state.error) {
         return (
           <div className="max-w-7xl mx-auto p-6">
-            <div className="p-6 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg shadow-md">
-              <h2 className="text-lg font-semibold mb-3">Error Loading Homepage</h2>
-              <p className="mb-4">{this.state.error}</p>
+            <div
+              className={`p-6 rounded-lg shadow-md ${
+                darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"
+              }`}
+            >
+              <h2
+                className={`text-lg font-semibold mb-3 ${
+                  darkMode ? "text-gray-100" : "text-gray-900"
+                }`}
+              >
+                Error Loading Homepage
+              </h2>
+              <p
+                className={`mb-4 ${
+                  darkMode ? "text-gray-300" : "text-gray-700"
+                }`}
+              >
+                {this.state.error}
+              </p>
               <button
                 onClick={() => navigate("/")}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors hover:scale-105"
+                className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${
+                  darkMode
+                    ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
+                    : "bg-gray-200 text-gray-900 hover:bg-gray-300"
+                }`}
               >
                 Reload
               </button>
@@ -127,20 +146,44 @@ const Home = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-white">
+      <div
+        className={`min-h-screen text-gray-900 ${
+          darkMode ? "bg-gray-900" : "bg-gray-50"
+        } transition-colors duration-300`}
+      >
         <div className="max-w-7xl mx-auto p-6">
           {/* Hero Section */}
-          <div className="rounded-2xl shadow-lg p-10 bg-white dark:bg-gray-800 mb-8 animate-fade-in border border-gray-200 dark:border-gray-700">
+          <div
+            className={`rounded-2xl shadow-lg p-10 ${
+              darkMode
+                ? "bg-gray-800 border-gray-600"
+                : "bg-white border-gray-200"
+            } mb-8 animate-fade-in border transition-colors duration-300`}
+          >
             <div className="flex justify-between items-center">
               <div>
-                <h1 className="text-3xl md:text-4xl font-bold mb-4">Welcome to Star Printing Dashboard</h1>
-                <p className="text-lg text-gray-700 dark:text-gray-300">
+                <h1
+                  className={`text-3xl md:text-4xl font-bold mb-4 ${
+                    darkMode ? "text-gray-100" : "text-gray-900"
+                  }`}
+                >
+                  Welcome to Star Printing Dashboard
+                </h1>
+                <p
+                  className={`text-lg ${
+                    darkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
+                >
                   Generate insightful reports, manage expenses, and visualize your business performance.
                 </p>
               </div>
               <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors hover:scale-105"
+                onClick={toggleDarkMode}
+                className={`p-2 rounded-full hover:scale-105 transition-colors ${
+                  darkMode
+                    ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
+                    : "bg-gray-200 text-gray-900 hover:bg-gray-300"
+                }`}
                 aria-label="Toggle dark mode"
               >
                 {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
@@ -196,7 +239,11 @@ const Home = () => {
 
           {/* Summary Section */}
           <div className="mt-12">
-            <h2 className="text-2xl font-semibold mb-6 text-gray-900 dark:text-gray-100">
+            <h2
+              className={`text-2xl font-semibold mb-6 ${
+                darkMode ? "text-gray-100" : "text-gray-900"
+              }`}
+            >
               Business Summary
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -214,17 +261,27 @@ const Home = () => {
             </div>
             <div
               ref={chartContainerRef}
-              className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border ${
-                darkMode ? "border-gray-700" : "border-gray-200"
-              } flex flex-col items-center animate-fade-in hover:scale-[1.02] transition-transform duration-300`}
+              className={`rounded-2xl shadow-md p-6 border hover:scale-[1.02] transition-transform duration-300 animate-fade-in ${
+                darkMode
+                  ? "bg-gray-800 border-gray-600"
+                  : "bg-white border-gray-200"
+              } flex flex-col items-center`}
             >
               <div className="flex justify-between items-center w-full mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                <h3
+                  className={`text-lg font-semibold ${
+                    darkMode ? "text-gray-100" : "text-gray-900"
+                  }`}
+                >
                   Revenue Trend
                 </h3>
                 <button
                   onClick={handleExport}
-                  className="px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors hover:scale-105"
+                  className={`px-3 py-1 rounded-lg hover:scale-105 transition-colors ${
+                    darkMode
+                      ? "bg-[#b8966f] text-white hover:bg-[#a7845f]"
+                      : "bg-[#b8966f] text-white hover:bg-[#a7845f]"
+                  }`}
                 >
                   Export PNG
                 </button>
@@ -275,7 +332,13 @@ const Home = () => {
                     />
                   </LineChart>
                 ) : (
-                  <p className="text-gray-500 dark:text-gray-400">No revenue data available</p>
+                  <p
+                    className={`${
+                      darkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                  >
+                    No revenue data available
+                  </p>
                 )}
               </div>
             </div>
@@ -286,6 +349,7 @@ const Home = () => {
             message={toast.message}
             type={toast.type}
             onClose={() => setToast(null)}
+            darkMode={darkMode}
           />
         )}
       </div>
@@ -308,16 +372,30 @@ const Card = ({ icon, title, onClick, color }) => (
 const SummaryCard = ({ title, value, icon, onClick, color, darkMode }) => (
   <div
     onClick={onClick}
-    className={`cursor-pointer rounded-xl p-6 shadow-md bg-white dark:bg-gray-800 border ${
-      darkMode ? "border-gray-700" : "border-gray-200"
-    } hover:scale-[1.03] transition-transform duration-300 animate-fade-in flex items-center`}
+    className={`cursor-pointer rounded-xl p-6 shadow-md border hover:scale-[1.03] transition-transform duration-300 animate-fade-in flex items-center ${
+      darkMode
+        ? "bg-gray-800 border-gray-600"
+        : "bg-white border-gray-200"
+    }`}
   >
     <div className={`p-3 rounded-full bg-gradient-to-br ${color} text-white mr-4`}>
       {icon}
     </div>
     <div>
-      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{title}</h3>
-      <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{value}</p>
+      <h3
+        className={`text-lg font-semibold ${
+          darkMode ? "text-gray-100" : "text-gray-900"
+        }`}
+      >
+        {title}
+      </h3>
+      <p
+        className={`text-2xl font-bold ${
+          darkMode ? "text-gray-100" : "text-gray-900"
+        }`}
+      >
+        {value}
+      </p>
     </div>
   </div>
 );

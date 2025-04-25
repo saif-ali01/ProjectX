@@ -16,7 +16,7 @@ import UndoDeleteToast from "../../components/expense-dashboard/UndoDeleteToast"
 import DateRangePicker from "../../components/expense-dashboard/DateRangePicker";
 import Toast from "../../components/common/Toast";
 
-const ExpenseDashboard = () => {
+const ExpenseDashboard = ({ darkMode }) => {
   const navigate = useNavigate();
   const [summary, setSummary] = useState([]);
   const [overTime, setOverTime] = useState([]);
@@ -39,7 +39,6 @@ const ExpenseDashboard = () => {
   const [filterCategory, setFilterCategory] = useState("");
   const [filterType, setFilterType] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
-  const [darkMode, setDarkMode] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [addModalOpen, setAddModalOpen] = useState(false);
@@ -327,8 +326,16 @@ const ExpenseDashboard = () => {
 
   if (loading) {
     return (
-      <div className="max-w-7xl mx-auto p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="p-4 bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-200 rounded-lg flex items-center">
+      <div
+        className={`max-w-7xl mx-auto p-6 min-h-screen transition-colors duration-300 ${
+          darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
+        }`}
+      >
+        <div
+          className={`p-4 rounded-lg flex items-center ${
+            darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-700"
+          }`}
+        >
           <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
             <circle
               className="opacity-25"
@@ -353,13 +360,25 @@ const ExpenseDashboard = () => {
 
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
-        <div className="p-6 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg shadow-md">
+      <div
+        className={`max-w-7xl mx-auto p-6 min-h-screen transition-colors duration-300 ${
+          darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
+        }`}
+      >
+        <div
+          className={`p-6 rounded-lg shadow-md ${
+            darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"
+          }`}
+        >
           <h2 className="text-lg font-semibold mb-3">Error Loading Dashboard</h2>
           <p className="mb-4">{error}</p>
           <button
             onClick={() => navigate("/bills")}
-            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors hover:scale-105"
+            className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
+              darkMode
+                ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
+                : "bg-gray-200 text-gray-900 hover:bg-gray-300"
+            }`}
           >
             Back to Bills
           </button>
@@ -384,15 +403,12 @@ const ExpenseDashboard = () => {
         <h1 className="text-2xl font-bold tracking-tight">Star Printing - Expense Dashboard</h1>
         <div className="flex gap-4">
           <button
-            onClick={() => setDarkMode(!darkMode)}
-            className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors hover:scale-105"
-            aria-label="Toggle dark mode"
-          >
-            {darkMode ? "☀️" : "🌙"}
-          </button>
-          <button
             onClick={() => navigate("/bills")}
-            className="px-4 py-2 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors hover:scale-105"
+            className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
+              darkMode
+                ? "bg-gray-800 text-blue-400 hover:bg-gray-700"
+                : "bg-white text-blue-600 hover:bg-gray-100"
+            }`}
           >
             Back to Bills
           </button>
@@ -400,7 +416,11 @@ const ExpenseDashboard = () => {
       </header>
 
       <main className="mt-6">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
+        <div
+          className={`rounded-lg shadow-md p-6 mb-6 border transition-colors duration-300 ${
+            darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+          }`}
+        >
           <DateRangePicker
             startDate={startDate}
             setStartDate={setStartDate}
@@ -413,17 +433,31 @@ const ExpenseDashboard = () => {
           />
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6 border border-gray-200 dark:border-gray-700">
+        <div
+          className={`rounded-lg shadow-md p-6 mb-6 border transition-colors duration-300 ${
+            darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+          }`}
+        >
           <SummaryCards summary={summary} darkMode={darkMode} />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 animate-fade-in">
-          <ExpenseOverTimeChart
-            overTime={overTime}
-            timeFrame={timeFrame}
-            darkMode={darkMode}
-          />
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+          <div
+            className={`rounded-lg shadow-md p-6 border transition-colors duration-300 ${
+              darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+            }`}
+          >
+            <ExpenseOverTimeChart
+              overTime={overTime}
+              timeFrame={timeFrame}
+              darkMode={darkMode}
+            />
+          </div>
+          <div
+            className={`rounded-lg shadow-md p-6 border transition-colors duration-300 ${
+              darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+            }`}
+          >
             <ExpenseByCategoryChart
               categories={categories}
               darkMode={darkMode}
@@ -433,13 +467,21 @@ const ExpenseDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 animate-fade-in">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+          <div
+            className={`rounded-lg shadow-md p-6 border transition-colors duration-300 ${
+              darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+            }`}
+          >
             <FinancialSummaryPieChart
               financialSummary={financialSummary}
               darkMode={darkMode}
             />
           </div>
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+          <div
+            className={`rounded-lg shadow-md p-6 border transition-colors duration-300 ${
+              darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+            }`}
+          >
             <FinancialSummaryLineChart
               financialSummary={financialSummary}
               timeFrame={timeFrame}
@@ -448,7 +490,11 @@ const ExpenseDashboard = () => {
           </div>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 border border-gray-200 dark:border-gray-700">
+        <div
+          className={`rounded-lg shadow-md p-6 border transition-colors duration-300 ${
+            darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+          }`}
+        >
           <TransactionsTable
             transactions={transactions}
             categories={categories}
@@ -478,7 +524,11 @@ const ExpenseDashboard = () => {
         />
 
         {addModalOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div
+            className={`fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-colors duration-300 ${
+              darkMode ? "bg-opacity-75" : "bg-opacity-50"
+            }`}
+          >
             <AddExpenseForm
               onSubmit={handleAddExpense}
               onCancel={() => setAddModalOpen(false)}
@@ -509,6 +559,7 @@ const ExpenseDashboard = () => {
             message={toast.message}
             type={toast.type}
             onClose={() => setToast(null)}
+            darkMode={darkMode}
           />
         )}
       </main>

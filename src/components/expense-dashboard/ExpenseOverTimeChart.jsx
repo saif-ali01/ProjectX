@@ -46,17 +46,25 @@ const ExpenseOverTimeChart = ({ overTime, timeFrame, darkMode }) => {
   return (
     <div
       ref={chartContainerRef}
-      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border ${
-        darkMode ? "border-gray-700" : "border-gray-200"
+      className={`rounded-lg shadow-md p-6 border transition-colors duration-300 ${
+        darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
       }`}
     >
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h2
+          className={`text-lg font-semibold ${
+            darkMode ? "text-gray-100" : "text-gray-900"
+          }`}
+        >
           Expense Over Time
         </h2>
         <button
           onClick={handleExport}
-          className="px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors hover:scale-105"
+          className={`px-3 py-1 rounded-lg font-medium transition-colors hover:scale-105 ${
+            darkMode
+              ? "bg-blue-500 text-white hover:bg-blue-600"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+          }`}
         >
           Export PNG
         </button>
@@ -96,7 +104,7 @@ const ExpenseOverTimeChart = ({ overTime, timeFrame, darkMode }) => {
             contentStyle={{
               backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
               color: darkMode ? "#E5E7EB" : "#1F2937",
-              border: darkMode ? "1px solid #4B5563" : "1px solid #9CA3AF",
+              border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
               borderRadius: "4px",
             }}
             formatter={(value) => `₹${value.toLocaleString("en-IN")}`}
@@ -107,7 +115,7 @@ const ExpenseOverTimeChart = ({ overTime, timeFrame, darkMode }) => {
           <Line
             type="monotone"
             dataKey="personal"
-            stroke="#3B82F6"
+            stroke={darkMode ? "#60A5FA" : "#3B82F6"} // Lighter blue in dark mode
             name="Personal"
             strokeWidth={2}
             dot={false}
@@ -115,7 +123,7 @@ const ExpenseOverTimeChart = ({ overTime, timeFrame, darkMode }) => {
           <Line
             type="monotone"
             dataKey="professional"
-            stroke="#10B981"
+            stroke={darkMode ? "#34D399" : "#10B981"} // Lighter green in dark mode
             name="Professional"
             strokeWidth={2}
             dot={false}

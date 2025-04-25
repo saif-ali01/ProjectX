@@ -1,10 +1,20 @@
 import React, { useRef, useEffect, useState } from "react";
 import { PieChart, Pie, Cell, Legend, Tooltip } from "recharts";
-import { COLORS } from "../../utils/constants";
+import Toast from "../../components/common/Toast";
+
+// Define COLORS with light/dark mode variants
+const COLORS = [
+  { light: "#3B82F6", dark: "#60A5FA" }, // Blue
+  { light: "#10B981", dark: "#34D399" }, // Green
+  { light: "#EF4444", dark: "#F87171" }, // Red
+  { light: "#F59E0B", dark: "#FBBF24" }, // Yellow
+  { light: "#8B5CF6", dark: "#A78BFA" }, // Purple
+];
 
 const ExpenseByCategoryChart = ({ categories, darkMode, onPieClick }) => {
   const chartContainerRef = useRef(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 500, height: 300 });
+  const [toast, setToast] = useState(null);
 
   // Dynamically set chart dimensions based on container size
   useEffect(() => {
@@ -25,7 +35,7 @@ const ExpenseByCategoryChart = ({ categories, darkMode, onPieClick }) => {
   const handleExport = () => {
     const svg = chartContainerRef.current.querySelector("svg");
     if (!svg) {
-      alert("Chart not found for export");
+      setToast({ message: "Chart not found for export", type: "error" });
       return;
     }
     const svgData = new XMLSerializer().serializeToString(svg);
@@ -33,31 +43,56 @@ const ExpenseByCategoryChart = ({ categories, darkMode, onPieClick }) => {
     const ctx = canvas.getContext("2d");
     const img = new Image();
     img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = img.width * 2; // Double resolution for sharper export
+      canvas.height = img.height * 2;
+      ctx.scale(2, 2); // Adjust for high DPI
       ctx.drawImage(img, 0, 0);
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/png");
       link.download = "expense_category_chart.png";
       link.click();
+      setToast({ message: "Chart exported successfully", type: "success" });
     };
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
+  // Handle empty data
+  if (!categories || categories.length === 0) {
+    return (
+      <div
+        className={`rounded-lg shadow-md p-6 border transition-colors duration-300 flex flex-col items-center ${
+          darkMode ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-200 text-gray-900"
+        }`}
+      >
+        <h2 className="text-lg font-semibold mb-4">Expense by Category</h2>
+        <p>No category data available for the selected time frame.</p>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={chartContainerRef}
-      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border ${
-        darkMode ? "border-gray-700" : "border-gray-200"
-      } flex flex-col items-center animate-fade-in`}
+      className={`rounded-lg shadow-md p-6 border transition-colors duration-300 flex flex-col items-center ${
+        darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+      }`}
     >
       <div className="flex justify-between items-center w-full mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h2
+          className={`text-lg font-semibold ${
+            darkMode ? "text-gray-100" : "text-gray-900"
+          }`}
+        >
           Expense by Category
         </h2>
         <button
           onClick={handleExport}
-          className="px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors hover:scale-105"
+          aria-label="Export category chart as PNG"
+          className={`px-3 py-1 rounded-lg font-medium transition-colors hover:scale-105 ${
+            darkMode
+              ? "bg-blue-500 text-white hover:bg-blue-600"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+          }`}
         >
           Export PNG
         </button>
@@ -75,11 +110,22 @@ const ExpenseByCategoryChart = ({ categories, darkMode, onPieClick }) => {
             style={{ cursor: "pointer" }}
             isAnimationActive={true}
             animationDuration={600}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && onPieClick) {
+                onPieClick(categories[0]); // Trigger with first category or adjust logic
+              }
+            }}
           >
             {categories.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
-                fill={COLORS[index % COLORS.length]}
+                fill={
+                  darkMode
+                    ? COLORS[index % COLORS.length].dark
+                    : COLORS[index % COLORS.length].light
+                }
                 style={{ transition: "transform 0.2s", cursor: "pointer" }}
                 onMouseEnter={(e) => (e.target.style.transform = "scale(1.05)")}
                 onMouseLeave={(e) => (e.target.style.transform = "scale(1)")}
@@ -98,7 +144,7 @@ const ExpenseByCategoryChart = ({ categories, darkMode, onPieClick }) => {
             contentStyle={{
               backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
               color: darkMode ? "#E5E7EB" : "#1F2937",
-              border: darkMode ? "1px solid #4B5563" : "1px solid #9CA3AF",
+              border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
               borderRadius: "4px",
               padding: "8px",
             }}
@@ -106,6 +152,14 @@ const ExpenseByCategoryChart = ({ categories, darkMode, onPieClick }) => {
           />
         </PieChart>
       </div>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+          darkMode={darkMode}
+        />
+      )}
     </div>
   );
 };

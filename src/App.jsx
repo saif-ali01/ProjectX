@@ -30,8 +30,9 @@ const Layout = ({ darkMode, toggleDarkMode }) => {
 
   useEffect(() => {
     const handleResize = () => {
-      setIsMobile(window.innerWidth < 768);
-      setIsOpen(window.innerWidth >= 768);
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      setIsOpen(mobile ? false : true); // Close sidebar on mobile by default
     };
 
     handleResize();
@@ -40,12 +41,15 @@ const Layout = ({ darkMode, toggleDarkMode }) => {
   }, []);
 
   return (
-    <div className={`flex h-screen ${darkMode ? "bg-gray-900" : "bg-gray-50"}`}>
+    <div className={`flex min-h-screen w-full ${darkMode ? "bg-gray-900" : "bg-gray-50"} overflow-x-hidden`}>
       {/* Sidebar */}
       <div
-        className={`${isOpen ? "w-64" : "w-20"
-          } fixed h-full transition-all duration-300 ${darkMode ? "bg-gray-800" : "bg-white"
-          } border-r ${darkMode ? "border-gray-700" : "border-gray-200"}`}
+        className={`
+          ${isOpen ? "w-64" : "w-16"}
+          fixed inset-y-0 z-50 transition-all duration-300
+          ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}
+          border-r md:block ${isMobile && !isOpen ? "hidden" : "block"}
+        `}
       >
         <div className="flex flex-col h-full p-4">
           <div className="flex items-center justify-between mb-8">
@@ -57,9 +61,13 @@ const Layout = ({ darkMode, toggleDarkMode }) => {
             <button
               onClick={() => setIsOpen(!isOpen)}
               className={`p-2 rounded-lg ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+              aria-label={isOpen ? "Close sidebar" : "Open sidebar"}
             >
-              {isOpen ? <FiX size={24} className={darkMode ? "text-white" : "text-gray-900"} /> :
-                <FiMenu size={24} className={darkMode ? "text-white" : "text-gray-900"} />}
+              {isOpen ? (
+                <FiX size={24} className={darkMode ? "text-white" : "text-gray-900"} />
+              ) : (
+                <FiMenu size={24} className={darkMode ? "text-white" : "text-gray-900"} />
+              )}
             </button>
           </div>
 
@@ -73,9 +81,10 @@ const Layout = ({ darkMode, toggleDarkMode }) => {
                   ${isActive ? (darkMode ? "bg-blue-600 text-white" : "bg-blue-100 text-blue-600") :
                     darkMode ? "hover:bg-gray-700 text-gray-300" : "hover:bg-gray-100 text-gray-700"}`
                 }
+                aria-label={`Navigate to ${item.name}`}
               >
                 <item.icon className="flex-shrink-0 w-6 h-6" />
-                {isOpen && <span className="ml-3">{item.name}</span>}
+                {isOpen && <span className="ml-3 truncate">{item.name}</span>}
               </NavLink>
             ))}
           </nav>
@@ -83,8 +92,8 @@ const Layout = ({ darkMode, toggleDarkMode }) => {
           <div className={`border-t ${darkMode ? "border-gray-700" : "border-gray-200"} pt-4`}>
             <button
               onClick={toggleDarkMode}
-              className={`w-full flex items-center p-3 rounded-lg transition-colors ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"
-                }`}
+              className={`w-full flex items-center p-3 rounded-lg transition-colors ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`}
+              aria-label={darkMode ? "Switch to light mode" : "Switch to dark mode"}
             >
               {darkMode ? (
                 <FiSun className="w-6 h-6 text-yellow-400" />
@@ -102,19 +111,42 @@ const Layout = ({ darkMode, toggleDarkMode }) => {
       </div>
 
       {/* Main Content */}
-      <main className={`flex-1 ${isOpen ? "ml-64" : "ml-20"} transition-margin duration-300 p-6`}>
+      <main
+        className={`
+          flex-1 transition-all duration-300
+          ${isMobile ? (isOpen ? "ml-64" : "ml-0") : (isOpen ? "ml-64" : "ml-16")}
+          ${darkMode ? "bg-gray-900" : "bg-gray-50"}
+          min-w-0 p-4 md:p-6
+        `}
+      >
         <Outlet />
       </main>
+
+      {/* Mobile Overlay */}
+      {isMobile && isOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+          onClick={() => setIsOpen(false)}
+          aria-hidden="true"
+        />
+      )}
     </div>
   );
 };
 
 function App() {
-  const [darkMode, setDarkMode] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    return localStorage.getItem("darkMode") === "true" ||
+      (!localStorage.getItem("darkMode") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  });
+
+  useEffect(() => {
+    localStorage.setItem("darkMode", darkMode);
+    document.documentElement.classList.toggle("dark", darkMode);
+  }, [darkMode]);
 
   const toggleDarkMode = () => {
-    setDarkMode(!darkMode);
-    document.documentElement.classList.toggle("dark");
+    setDarkMode((prev) => !prev);
   };
 
   return (
@@ -133,7 +165,7 @@ function App() {
           <Route path="/create-bill" element={<BillMaker darkMode={darkMode} />} />
           <Route path="/bill-section" element={<BillSection darkMode={darkMode} />} />
           <Route path="/bill-view/:id" element={<ViewBill darkMode={darkMode} />} />
-          <Route path="/invoices" element={<InvoiceBill darkMode={darkMode} />} />
+          <Route path="/invoice" element={<InvoiceBill darkMode={darkMode} />} />
           <Route path="/charts" element={<ChartPage darkMode={darkMode} />} />
           <Route path="/expenses" element={<ExpenseDashboard darkMode={darkMode} />} />
           <Route path="/reports" element={<Reports darkMode={darkMode} />} />

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
 import Toast from "../../components/common/Toast";
 
 const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) => {
@@ -34,8 +34,9 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
     const ctx = canvas.getContext("2d");
     const img = new Image();
     img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
+      canvas.width = img.width * 2; // Double resolution for sharper export
+      canvas.height = img.height * 2;
+      ctx.scale(2, 2); // Adjust for high DPI
       ctx.drawImage(img, 0, 0);
       const link = document.createElement("a");
       link.href = canvas.toDataURL("image/png");
@@ -46,20 +47,43 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
     img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
+  // Handle empty data
+  if (!financialSummary?.timeSeries || financialSummary.timeSeries.length === 0) {
+    return (
+      <div
+        className={`rounded-lg shadow-md p-6 border transition-colors duration-300 flex flex-col items-center ${
+          darkMode ? "bg-gray-800 border-gray-700 text-gray-100" : "bg-white border-gray-200 text-gray-900"
+        }`}
+      >
+        <h2 className="text-lg font-semibold mb-4">Financial Summary (Over Time)</h2>
+        <p>No data available for the selected time frame.</p>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={chartContainerRef}
-      className={`bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border ${
-        darkMode ? "border-gray-700" : "border-gray-200"
-      } flex flex-col items-center animate-fade-in`}
+      className={`rounded-lg shadow-md p-6 border transition-colors duration-300 flex flex-col items-center ${
+        darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+      }`}
     >
       <div className="flex justify-between items-center w-full mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+        <h2
+          className={`text-lg font-semibold ${
+            darkMode ? "text-gray-100" : "text-gray-900"
+          }`}
+        >
           Financial Summary (Over Time)
         </h2>
         <button
           onClick={handleExport}
-          className="px-3 py-1 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors hover:scale-105"
+          aria-label="Export chart as PNG"
+          className={`px-3 py-1 rounded-lg font-medium transition-colors hover:scale-105 ${
+            darkMode
+              ? "bg-blue-500 text-white hover:bg-blue-600"
+              : "bg-blue-600 text-white hover:bg-blue-700"
+          }`}
         >
           Export PNG
         </button>
@@ -76,6 +100,10 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
           isAnimationActive={true}
           animationDuration={600}
         >
+          <CartesianGrid
+            stroke={darkMode ? "#374151" : "#E5E7EB"}
+            strokeDasharray="3 3"
+          />
           <XAxis
             dataKey={
               timeFrame === "daily"
@@ -104,7 +132,7 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
             contentStyle={{
               backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
               color: darkMode ? "#E5E7EB" : "#1F2937",
-              border: darkMode ? "1px solid #4B5563" : "1px solid #9CA3AF",
+              border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
               borderRadius: "4px",
               padding: "8px",
             }}
@@ -119,7 +147,7 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
           <Line
             type="monotone"
             dataKey="expenses"
-            stroke="#EF4444"
+            stroke={darkMode ? "#F87171" : "#EF4444"} // Lighter red in dark mode
             name="Expenses"
             strokeWidth={2}
             dot={false}
@@ -127,7 +155,7 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
           <Line
             type="monotone"
             dataKey="earnings"
-            stroke="#10B981"
+            stroke={darkMode ? "#34D399" : "#10B981"} // Lighter green in dark mode
             name="Earnings"
             strokeWidth={2}
             dot={false}
@@ -135,7 +163,7 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
           <Line
             type="monotone"
             dataKey="profitLoss"
-            stroke="#3B82F6"
+            stroke={darkMode ? "#60A5FA" : "#3B82F6"} // Lighter blue in dark mode
             name="Profit/Loss"
             strokeWidth={2}
             dot={false}
@@ -147,6 +175,7 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
           message={toast.message}
           type={toast.type}
           onClose={() => setToast(null)}
+          darkMode={darkMode} // Pass darkMode to Toast
         />
       )}
     </div>
