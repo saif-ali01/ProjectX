@@ -39,7 +39,7 @@ const Reports = ({ darkMode }) => {
           type: reportParams.type,
         },
       });
-      setReportData(response.data);
+      setReportData(response.data.data);
     } catch (err) {
       const errorMessage = err.response?.data?.message || "Failed to load reports";
       setError(errorMessage);
