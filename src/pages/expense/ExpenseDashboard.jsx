@@ -324,6 +324,7 @@ const ExpenseDashboard = ({ darkMode }) => {
       date: tx.date,
       amount: parseFloat(tx.amount.replace("₹", "").replace(/,/g, "")),
     });
+    console.log("editexpense")
     setEditModalOpen(true);
   };
 
@@ -556,7 +557,6 @@ const ExpenseDashboard = ({ darkMode }) => {
           handleUndoDelete={handleUndoDelete}
           darkMode={darkMode}
         />
-
         {toast && (
           <Toast
             message={toast.message}
