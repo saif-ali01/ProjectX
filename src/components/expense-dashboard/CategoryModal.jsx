@@ -1,14 +1,13 @@
 import React, { useEffect, useRef } from "react";
 
+// CategoryModal component for displaying category details
 const CategoryModal = ({ isOpen, onClose, selectedCategory, categories, darkMode }) => {
   const modalRef = useRef(null);
 
   // Handle escape key and focus trapping
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
 
     const handleFocusTrap = (e) => {
@@ -43,9 +42,7 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, categories, darkMode
 
   // Handle click outside to close modal
   const handleOutsideClick = (e) => {
-    if (modalRef.current && !modalRef.current.contains(e.target)) {
-      onClose();
-    }
+    if (modalRef.current && !modalRef.current.contains(e.target)) onClose();
   };
 
   if (!isOpen) return null;
@@ -54,16 +51,16 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, categories, darkMode
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 transition-opacity duration-300"
       onClick={handleOutsideClick}
     >
       <div
         ref={modalRef}
-        className={`rounded-lg p-6 max-w-md w-full border shadow-md transition-all duration-300 ${
+        className={`rounded-lg p-4 sm:p-6 max-w-sm sm:max-w-md w-full border shadow-md transition-all duration-300 animate-fade-in ${
           darkMode
             ? "bg-gray-800 border-gray-700 text-gray-100"
             : "bg-white border-gray-200 text-gray-900"
-        } animate-fade-in`}
+        }`}
         role="dialog"
         aria-labelledby="category-modal-title"
         aria-describedby="category-modal-description"
@@ -71,13 +68,13 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, categories, darkMode
       >
         <h2
           id="category-modal-title"
-          className="text-xl font-semibold mb-4"
+          className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4"
         >
           {selectedCategory} Details
         </h2>
         <p
           id="category-modal-description"
-          className={`mb-4 ${
+          className={`mb-4 sm:mb-6 text-sm sm:text-base ${
             darkMode ? "text-gray-400" : "text-gray-600"
           }`}
         >
@@ -88,7 +85,7 @@ const CategoryModal = ({ isOpen, onClose, selectedCategory, categories, darkMode
         </p>
         <button
           onClick={onClose}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
+          className={`w-full py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base ${
             darkMode
               ? "bg-blue-500 text-white hover:bg-blue-600"
               : "bg-blue-600 text-white hover:bg-blue-700"

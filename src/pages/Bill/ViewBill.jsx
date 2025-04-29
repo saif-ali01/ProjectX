@@ -4,15 +4,17 @@ import { api } from "../../utils/api";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import leaf from "../../assets/leaf.png";
+import starlogo from "../../assets/starlogo.png";
 import { debounce } from "lodash";
 import { FiArrowLeft, FiEdit, FiSave, FiX, FiPlus, FiTrash, FiDownload } from "react-icons/fi";
 
+// ViewBill component for viewing, editing, and exporting bills
 const ViewBill = ({ darkMode }) => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [bill, setBill] = useState(null);
   const [status, setStatus] = useState("pending");
-  const [advance, setAdvance] = useState(0);
+  const [advance, setAdvance] = useState();
   const [notes, setNotes] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [sortField, setSortField] = useState("id");
@@ -22,7 +24,7 @@ const ViewBill = ({ darkMode }) => {
   const [pdfLoading, setPdfLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
-  // Enum values from Bill model
+  // Enum values for bill items
   const typeOptions = ["Book", "Pad", "Tag", "Register", "Other", ""];
   const sizeOptions = ["1/3", "1/4", "1/5", "1/6", "1/8", "1/10", "1/12", "1/16", "Other", ""];
 
@@ -71,8 +73,7 @@ const ViewBill = ({ darkMode }) => {
         setStatus(billData.status || "pending");
         setNotes(billData.note || "");
       } catch (err) {
-        const errorMessage =
-          err.response?.data?.message || err.message || "Failed to load bill details";
+        const errorMessage = err.response?.data?.message || err.message || "Failed to load bill details";
         setError(errorMessage);
         setToast({ message: errorMessage, type: "error" });
         console.error("Fetch error:", err);
@@ -89,6 +90,7 @@ const ViewBill = ({ darkMode }) => {
     setSearchTerm(value);
   }, 300);
 
+  // Handle status change
   const handleStatusChange = (newStatus) => {
     const lowerStatus = newStatus.toLowerCase();
     setStatus(lowerStatus);
@@ -118,7 +120,7 @@ const ViewBill = ({ darkMode }) => {
           const updatedItem = { ...item };
           if (field === "qty" || field === "rate") {
             const numericValue = Number(value) || 0;
-            updatedItem[field] = Math.max(0, numericValue); // Ensure non-negative
+            updatedItem[field] = Math.max(0, numericValue);
           } else {
             updatedItem[field] = value;
           }
@@ -150,7 +152,7 @@ const ViewBill = ({ darkMode }) => {
           size: "",
           customType: "",
           customSize: "",
-          qty: 1, // Default to 1
+          qty: 1,
           rate: 0,
           total: 0,
         },
@@ -186,23 +188,15 @@ const ViewBill = ({ darkMode }) => {
   // Save changes to the bill
   const saveChanges = async () => {
     try {
-      // Validate partyName
-      if (!bill.partyName?.trim()) {
-        throw new Error("Party name is required");
-      }
+      if (!bill.partyName?.trim()) throw new Error("Party name is required");
+      if (!bill.items?.length) throw new Error("At least one item is required");
 
-      // Validate rows
-      if (!bill.items?.length) {
-        throw new Error("At least one item is required");
-      }
-
-      const invalidItem = bill.items.find((item) => {
-        const trimmedParticulars = item.particulars?.trim() || "";
-        return (
+      const invalidItem = bill.items.find(
+        (item) =>
           !item.id ||
           isNaN(item.id) ||
           item.id <= 0 ||
-          !trimmedParticulars ||
+          !item.particulars?.trim() ||
           isNaN(item.qty) ||
           item.qty <= 0 ||
           isNaN(item.rate) ||
@@ -211,95 +205,58 @@ const ViewBill = ({ darkMode }) => {
           item.total <= 0 ||
           (item.type && !typeOptions.includes(item.type)) ||
           (item.size && !sizeOptions.includes(item.size))
-        );
-      });
+      );
 
-      if (invalidItem) {
+      if (invalidItem)
         throw new Error(
-          `Invalid item (ID: ${invalidItem.id}): Ensure ID, particulars, quantity (>0), rate (>0), and total (>0) are valid, and type/size are correct`
+          `Invalid item (ID: ${invalidItem.id}): Ensure ID, particulars, quantity (>0), rate (>0), and total (>0) are valid`
         );
-      }
 
       const isPaid = status.toLowerCase() === "paid";
       const numericAdvance = isPaid ? 0 : Number(advance) || 0;
-      if (isNaN(numericAdvance) || numericAdvance < 0) {
+      if (isNaN(numericAdvance) || numericAdvance < 0)
         throw new Error("Advance must be a non-negative number");
-      }
 
       const calculatedBalance = isPaid ? 0 : bill.grandTotal - numericAdvance;
-      if (isNaN(calculatedBalance) || calculatedBalance < 0) {
+      if (isNaN(calculatedBalance) || calculatedBalance < 0)
         throw new Error("Balance cannot be negative");
-      }
-
-      const calculatedDue = isPaid ? 0 : bill.grandTotal - numericAdvance;
-      if (isNaN(calculatedDue) || calculatedDue < 0) {
-        throw new Error("Due cannot be negative");
-      }
-
-      const calculatedPreviousBalance = Math.max(
-        0,
-        bill.balance - (bill.grandTotal - numericAdvance)
-      );
-      if (isNaN(calculatedPreviousBalance)) {
-        throw new Error("Previous balance calculation failed");
-      }
-
-      if (!["pending", "due", "paid"].includes(status.toLowerCase())) {
-        throw new Error("Status must be pending, due, or paid");
-      }
 
       const updatedBill = {
         partyName: bill.partyName.trim(),
-        rows: bill.items.map((item) => {
-          const qty = Number(item.qty) || 0;
-          const rate = Number(item.rate) || 0;
-          const total = Number(item.total) || qty * rate;
-          return {
-            id: Number(item.id),
-            particulars: item.particulars.trim(),
-            type: item.type || "",
-            size: item.size || "",
-            customType: item.type === "Other" ? item.customType?.trim() || "" : "",
-            customSize: item.size === "Other" ? item.customSize?.trim() || "" : "",
-            quantity: qty,
-            rate: rate,
-            total: total,
-          };
-        }),
+        rows: bill.items.map((item) => ({
+          id: Number(item.id),
+          particulars: item.particulars.trim(),
+          type: item.type || "",
+          size: item.size || "",
+          customType: item.type === "Other" ? item.customType?.trim() || "" : "",
+          customSize: item.size === "Other" ? item.customSize?.trim() || "" : "",
+          quantity: Number(item.qty) || 0,
+          rate: Number(item.rate) || 0,
+          total: Number(item.total) || 0,
+        })),
         total: Number(bill.grandTotal) || 0,
         advance: numericAdvance,
         balance: calculatedBalance,
         status: status.toLowerCase(),
         note: notes?.trim() || "",
-        due: calculatedDue,
-        previousBalance: calculatedPreviousBalance,
+        due: calculatedBalance,
+        previousBalance: Math.max(0, bill.balance - (bill.grandTotal - numericAdvance)),
       };
 
-      if (isNaN(updatedBill.total) || updatedBill.total <= 0) {
+      if (isNaN(updatedBill.total) || updatedBill.total <= 0)
         throw new Error("Total must be positive");
-      }
 
       const response = await api.put(`/bills/id/${id}`, updatedBill);
       const updatedData = response.data;
 
-      // Toast notifications
-      if (status.toLowerCase() === "paid") {
-        setToast({
-          message: `Bill marked as paid! ₹${updatedData.total.toLocaleString(
-            "en-IN"
-          )} added to earnings`,
-          type: "success",
-          autoClose: 5000,
-        });
-      } else {
-        setToast({
-          message: "Bill updated successfully",
-          type: "success",
-          autoClose: 3000,
-        });
-      }
+      setToast({
+        message: status.toLowerCase() === "paid"
+          ? `Bill marked as paid! ₹${updatedData.total.toLocaleString("en-IN")} added to earnings`
+          : "Bill updated successfully",
+        type: "success",
+        autoClose: status.toLowerCase() === "paid" ? 5000 : 3000,
+      });
 
-      // Update state
       setBill((prev) => ({
         ...prev,
         ...updatedData,
@@ -327,13 +284,6 @@ const ViewBill = ({ darkMode }) => {
       setError("");
     } catch (err) {
       const errorMessage = err.response?.data?.message || "Failed to save changes";
-      console.error("Save error details:", {
-        message: errorMessage,
-        errors: err.response?.data?.errors || [],
-        response: err.response?.data,
-        status: err.response?.status,
-        requestData: JSON.stringify(updatedBill, null, 2),
-      });
       setToast({
         message: `Error: ${errorMessage}${err.response?.data?.errors ? ' - ' + err.response.data.errors.join(', ') : ''}`,
         type: "error",
@@ -342,49 +292,41 @@ const ViewBill = ({ darkMode }) => {
     }
   };
 
-  // Get status color for UI (Tailwind classes)
+  // Get status color for UI
   const getStatusColor = (status) => {
     switch (status.toLowerCase()) {
-      case "paid":
-        return darkMode ? "text-green-400" : "text-green-600";
-      case "due":
-        return darkMode ? "text-red-400" : "text-red-600";
-      case "pending":
-        return darkMode ? "text-orange-400" : "text-orange-600";
-      default:
-        return darkMode ? "text-gray-400" : "text-gray-600";
+      case "paid": return darkMode ? "text-green-400" : "text-green-600";
+      case "due": return darkMode ? "text-red-400" : "text-red-600";
+      case "pending": return darkMode ? "text-orange-400" : "text-orange-600";
+      default: return darkMode ? "text-gray-400" : "text-gray-600";
     }
   };
 
-  // Get balance color for UI (Tailwind classes)
+  // Get balance color for UI
   const getBalanceColor = (balance) => {
     if (balance === 0) return darkMode ? "text-green-400" : "text-green-600";
     if (balance > 0) return darkMode ? "text-red-400" : "text-red-600";
     return darkMode ? "text-orange-400" : "text-orange-600";
   };
 
-  // Get status color for PDF (RGB values)
+  // Get status color for PDF
   const getStatusColorPDF = (status) => {
     switch (status.toLowerCase()) {
-      case "paid":
-        return [22, 160, 133]; // Green
-      case "due":
-        return [192, 57, 43]; // Red
-      case "pending":
-        return [243, 156, 18]; // Orange
-      default:
-        return [100, 100, 100]; // Gray
+      case "paid": return [22, 160, 133];
+      case "due": return [192, 57, 43];
+      case "pending": return [243, 156, 18];
+      default: return [100, 100, 100];
     }
   };
 
-  // Get balance color for PDF (RGB values)
+  // Get balance color for PDF
   const getBalanceColorPDF = (balance) => {
-    if (balance === 0) return [22, 160, 133]; // Green
-    if (balance > 0) return [192, 57, 43]; // Red
-    return [243, 156, 18]; // Orange
+    if (balance === 0) return [22, 160, 133];
+    if (balance > 0) return [192, 57, 43];
+    return [243, 156, 18];
   };
 
-  // Export bill to PDF
+  // Export bill to PDF with star logo
   const exportToPDF = async () => {
     if (!bill) return;
 
@@ -392,133 +334,127 @@ const ViewBill = ({ darkMode }) => {
       setPdfLoading(true);
       setError("");
 
-      const doc = new jsPDF();
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
       const footerHeight = 30;
-      const currentDate = new Date().toLocaleDateString();
 
-      // Header
-      doc.setFillColor(184, 150, 111); // #b8966f
-      doc.rect(0, 0, pageWidth, 20, "F");
-      doc.setFontSize(16);
-      doc.setFont("helvetica", "bold");
-      doc.setTextColor(255, 255, 255);
-      doc.text("Star Printing - Bill", pageWidth / 2, 15, { align: "center" });
-
-      // Add leaf image
-      const leafWidth = 50;
-      const leafHeight = 40;
-      const leafX = pageWidth - leafWidth - 10;
-      const leafY = 25;
-      try {
-        doc.addImage(leaf, "PNG", leafX, leafY, leafWidth, leafHeight);
-      } catch (imgErr) {
-        console.warn("Failed to load leaf image:", imgErr);
-      }
-
-      // Bill Info
-      let yPos = 30;
-      const partyNameFontSize = 12;
-      doc.setFontSize(partyNameFontSize);
-      doc.setTextColor(0, 0, 0);
-
-      const maxPartyNameWidth = pageWidth - 30;
-      const partyNameLines = doc.splitTextToSize(`To: ${bill.partyName}`, maxPartyNameWidth);
-
-      partyNameLines.forEach((line, index) => {
-        doc.text(line, 15, yPos + index * 6);
+      // Load images
+      const leafResponse = await fetch(leaf);
+      const leafBlob = await leafResponse.blob();
+      const leafBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(leafBlob);
       });
 
-      yPos += partyNameLines.length * 6;
+      const starResponse = await fetch(starlogo);
+      const starBlob = await starResponse.blob();
+      const starBase64 = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(starBlob);
+      });
 
-      doc.setFontSize(10);
-      if (partyNameLines.length <= 1) {
-        doc.text(`Date: ${bill.date}`, pageWidth - 15, 30, { align: "right" });
-        doc.text(`Sr no.: ${bill.serialNumber}`, pageWidth - 15, 35, { align: "right" });
-        yPos = Math.max(yPos, 40);
-      } else {
-        doc.text(`Date: ${bill.date}`, 15, yPos);
-        doc.text(`Sr no.: ${bill.serialNumber}`, 15, yPos + 5);
-        yPos += 10;
-      }
-
-      // Table
+      // Table data
       const tableData = bill.items.map((item) => [
         item.id,
-        `${item.particulars} ${item.type}${
-          item.type === "Other" && item.customType ? ` (${item.customType})` : ""
-        } ${item.size}${item.size === "Other" && item.customSize ? ` (${item.customSize})` : ""}`.trim(),
+        `${item.particulars} ${item.type}${item.type === "Other" && item.customType ? ` (${item.customType})` : ""} ${item.size}${item.size === "Other" && item.customSize ? ` (${item.customSize})` : ""}`.trim(),
         item.qty,
         `Rs ${Number(item.rate || 0).toFixed(2)}`,
         `Rs ${Number(item.total || 0).toFixed(2)}`,
       ]);
 
+      // Add leaf images to corners
+      const leafWidth = 70;
+      const leafHeight = 55;
+      const verticalOffset = 5;
+      doc.addImage(leafBase64, "PNG", -20, -10 - verticalOffset, leafWidth + 20, leafHeight + 10);
+      doc.addImage(leafBase64, "PNG", pageWidth - 70, -10 - verticalOffset, leafWidth + 20, leafHeight + 10);
+
+     
+      // Add circle and star logo
+      doc.setFillColor(210, 174, 141);
+      doc.circle(pageWidth / 2 - 33, 20, 10, "F");
+      doc.addImage(starBase64, "PNG", pageWidth / 2 - 40, 13, 15, 15); // Star logo centered in circle
+      doc.setFontSize(30);
+      doc.setFont("times", "normal");
+      doc.setTextColor(0, 0, 0);
+      doc.text("INVOICE", pageWidth / 2, 27, { align: "center", charSpace: 2 });
+
+      // Add separator line
+      doc.setFillColor(240, 210, 181);
+      doc.rect(60, 34, pageWidth - 125, 5, "F");
+
+      // Main table with centered headers for Qty, Rate, Total
       autoTable(doc, {
-        startY: yPos + 5,
+        startY: 55,
         head: [["#", "Particulars", "Qty", "Rate", "Total"]],
         body: tableData,
         theme: "grid",
         styles: { fontSize: 10, cellPadding: 2, textColor: [80, 80, 80] },
-        headStyles: {
-          fillColor: [210, 180, 140],
-          textColor: [255, 255, 255],
-        },
+        headStyles: { fillColor: [210, 180, 140], textColor: [255, 255, 255] },
         columnStyles: {
-          0: { cellWidth: 10 },
-          1: { cellWidth: 90 },
-          2: { cellWidth: 20 },
-          3: { cellWidth: 30 },
+          0: { cellWidth: 15, halign: "center" },
+          1: { cellWidth: 85 },
+          2: { cellWidth: 20, halign: "right" },
+          3: { cellWidth: 30, halign: "right" },
           4: { cellWidth: 30, halign: "right" },
         },
         margin: { left: 15, right: 15, bottom: footerHeight },
         didParseCell: (data) => {
-          if (data.section === "body") {
-            data.cell.styles.fillColor = data.row.index % 2 === 0 ? [255, 255, 255] : [245, 245, 220];
+          if (data.section === "head") {
+            if (["Qty", "Rate", "Total"].includes(data.cell.text[0])) {
+              data.cell.styles.halign = "center";
+            } else {
+              data.cell.styles.halign = "left";
+            }
           }
         },
       });
 
       // Totals Section
       let finalY = doc.lastAutoTable.finalY + 5;
-      const footerY = pageHeight - footerHeight;
-
-      const totalsHeightEstimate = 14 + 15;
-      if (finalY + totalsHeightEstimate > footerY - 10) {
-        doc.addPage();
-        finalY = 20;
-      }
-
       doc.setFont("helvetica", "bold");
       doc.setTextColor(184, 150, 111);
       doc.setFontSize(14);
-      doc.text(
-        `Total: Rs ${Number(bill.grandTotal || 0).toFixed(2)}`,
-        pageWidth - 15,
-        finalY,
-        { align: "right" }
-      );
-      doc.setTextColor(0, 0, 0);
-
-      // Notes
-      finalY += 10;
-      if (finalY + 15 > footerY - 10) {
+      doc.text(`Total: Rs ${Number(bill.grandTotal || 0).toFixed(2)}`, pageWidth - 15, finalY, { align: "right" });
+     
+      // Payment Method
+      finalY += 15;
+      if (finalY + 15 > doc.internal.pageSize.getHeight() - footerHeight - 10) {
         doc.addPage();
         finalY = 20;
       }
-      doc.setFontSize(10);
+      doc.setTextColor(184, 150, 111);
+      doc.setFont("helvetica", "bold");
+      doc.text("Payment Method", 15, finalY);
       doc.setFont("helvetica", "normal");
-      doc.text("Notes:", 15, finalY);
-      doc.text(notes || "No notes", 15, finalY + 5, { maxWidth: pageWidth - 30 });
+      doc.text("Bank Name: Liceria & Co.", 15, finalY + 5);
+      doc.text("Account No: 123-456-7890", 15, finalY + 10);
 
-      // Footer
-      doc.setFillColor(184, 150, 111);
-      doc.rect(0, footerY, pageWidth, footerHeight, "F");
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.text("Thank you for your business!", pageWidth / 2, footerY + 8, { align: "center" });
-      doc.text("Contact: +91 9350432551 | 1F-51, Faridabad", pageWidth / 2, footerY + 14, { align: "center" });
-      doc.text(`Generated on: ${currentDate}`, pageWidth / 2, footerY + 20, { align: "center" });
+    // Footer section
+    const footerY = pageHeight - 40;
+    doc.setFillColor(210, 174, 141);
+    doc.rect(20, footerY, pageWidth - 40, 30, "F");
+    doc.setFontSize(16);
+    doc.setFont("times", "normal");
+    doc.setTextColor(255, 255, 255);
+    doc.text("Star Printing", 25, footerY + 8);
+    doc.setFontSize(10);
+    doc.text(`Invoice No: ${bill.serialNumber}`, 25, footerY + 13);
+    doc.text(`Date: ${bill.date}`, 25, footerY + 18);
+    doc.text("Invoice For:", pageWidth - 60, footerY + 5);
+    doc.setFontSize(15);
+    doc.text(bill.partyName, pageWidth - 60, footerY + 10);
+    doc.setFontSize(9);
+    doc.text("Phone: +91 93-5043-2551", pageWidth / 2, footerY + 20, { align: "center" });
+    doc.text("Address: 1F-51 Faridabad, Haryana, India", pageWidth / 2, footerY + 25, { align: "center" });
+
+    // Thank you message
+    doc.setFontSize(10);
+    doc.setTextColor(120, 120, 120);
+    doc.text("Thank you for Purchase", pageWidth / 2, footerY + 35, { align: "center" });
 
       doc.save(`Bill_${bill.serialNumber}_${bill.partyName}.pdf`);
       setToast({ message: "PDF generated successfully", type: "success" });
@@ -535,7 +471,7 @@ const ViewBill = ({ darkMode }) => {
   if (loading) {
     return (
       <div className={`min-h-screen ${darkMode ? "bg-gray-900" : "bg-gray-50"} transition-colors duration-300`}>
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="max-w-6xl mx-auto p-4 sm:p-6">
           <div className={`p-4 rounded-lg flex items-center animate-pulse ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-700"}`}>
             <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
@@ -552,11 +488,11 @@ const ViewBill = ({ darkMode }) => {
   if (error) {
     return (
       <div className={`min-h-screen ${darkMode ? "bg-gray-900" : "bg-gray-50"} transition-colors duration-300`}>
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="max-w-6xl mx-auto p-4 sm:p-6">
           <div className={`p-4 rounded-lg ${darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"}`}>
             <h2 className="font-bold mb-2">Error:</h2>
             <p>{error}</p>
-            <div className="flex gap-4 mt-4">
+            <div className="flex flex-wrap gap-4 mt-4">
               <button
                 onClick={() => navigate(-1)}
                 className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 ${darkMode ? "bg-[#b8966f] text-white hover:bg-[#a7845f]" : "bg-[#b8966f] text-white hover:bg-[#a7845f]"}`}
@@ -567,7 +503,6 @@ const ViewBill = ({ darkMode }) => {
                 onClick={() => {
                   setError("");
                   setLoading(true);
-                  // Re-fetch bill
                   fetchBill();
                 }}
                 className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 ${darkMode ? "bg-[#b8966f] text-white hover:bg-[#a7845f]" : "bg-[#b8966f] text-white hover:bg-[#a7845f]"}`}
@@ -588,7 +523,7 @@ const ViewBill = ({ darkMode }) => {
         {/* Toast Notification */}
         {toast && (
           <div
-            className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in ${
+            className={`fixed top-4 right-4 p-4 rounded-lg shadow-lg flex items-center gap-2 animate-slide-in z-50 ${
               toast.type === "success"
                 ? darkMode
                   ? "bg-green-900 text-green-200"
@@ -612,17 +547,17 @@ const ViewBill = ({ darkMode }) => {
         >
           {/* Header */}
           <div
-            className={`p-6 ${
+            className={`p-4 sm:p-6 ${
               darkMode ? "bg-[#b8966f]" : "bg-[#b8966f]"
-            } text-white flex items-center justify-between`}
+            } text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}
           >
             <div className="flex items-center gap-3">
-              <img src={leaf} alt="Star Printing Logo" className="w-12 h-10" />
-              <h1 className="text-2xl font-bold tracking-tight">
+              <img src={starlogo} alt="Star Printing Logo" className="w-10 h-10 object-contain" />
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight">
                 Star Printing - Bill
               </h1>
             </div>
-            <div className="text-sm space-y-1">
+            <div className="text-xs sm:text-sm space-y-1">
               <p>Serial #: {bill.serialNumber}</p>
               <p>Date: {bill.date}</p>
               <p className={getStatusColor(status)}>
@@ -633,46 +568,31 @@ const ViewBill = ({ darkMode }) => {
 
           {/* Main Content */}
           <div
-            className={`p-6 ${
+            className={`p-4 sm:p-6 ${
               darkMode ? "bg-gray-800 text-gray-100" : "bg-white text-gray-900"
             }`}
           >
             {/* PDF Loading State */}
             {pdfLoading && (
               <div
-                className={`mb-6 p-4 rounded-lg flex items-center animate-pulse ${
+                className={`mb-4 sm:mb-6 p-4 rounded-lg flex items-center animate-pulse ${
                   darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-700"
                 }`}
               >
-                <svg
-                  className="animate-spin h-5 w-5 mr-3"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                    fill="none"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
+                <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
                 Generating PDF...
               </div>
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap gap-3 mb-6 justify-between items-center">
+            <div className="flex flex-wrap gap-3 mb-4 sm:mb-6 justify-between items-center">
               <div className="flex flex-wrap gap-3">
                 <button
                   onClick={() => setIsEditing(!isEditing)}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 ${
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 text-sm sm:text-base ${
                     isEditing
                       ? darkMode
                         ? "bg-red-600 text-white hover:bg-red-700"
@@ -696,7 +616,7 @@ const ViewBill = ({ darkMode }) => {
                   <>
                     <button
                       onClick={saveChanges}
-                      className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 ${
+                      className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 text-sm sm:text-base ${
                         darkMode
                           ? "bg-[#b8966f] text-white hover:bg-[#a7845f]"
                           : "bg-[#b8966f] text-white hover:bg-[#a7845f]"
@@ -706,7 +626,7 @@ const ViewBill = ({ darkMode }) => {
                     </button>
                     <button
                       onClick={addRow}
-                      className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 ${
+                      className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 text-sm sm:text-base ${
                         darkMode
                           ? "bg-[#b8966f] text-white hover:bg-[#a7845f]"
                           : "bg-[#b8966f] text-white hover:bg-[#a7845f]"
@@ -718,7 +638,7 @@ const ViewBill = ({ darkMode }) => {
                 )}
                 <button
                   onClick={exportToPDF}
-                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 ${
+                  className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 text-sm sm:text-base ${
                     darkMode
                       ? "bg-[#b8966f] text-white hover:bg-[#a7845f]"
                       : "bg-[#b8966f] text-white hover:bg-[#a7845f]"
@@ -730,7 +650,7 @@ const ViewBill = ({ darkMode }) => {
               </div>
               <button
                 onClick={() => navigate(-1)}
-                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 ${
+                className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-transform hover:scale-105 text-sm sm:text-base ${
                   darkMode
                     ? "bg-gray-600 text-gray-100 hover:bg-gray-700"
                     : "bg-gray-500 text-white hover:bg-gray-600"
@@ -741,20 +661,20 @@ const ViewBill = ({ darkMode }) => {
             </div>
 
             {/* Bill Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4 sm:mb-6">
               <div
                 className={`p-4 rounded-lg shadow-sm ${
                   darkMode ? "bg-gray-700" : "bg-gray-100"
                 }`}
               >
-                <h2 className="font-semibold mb-2">Bill To:</h2>
+                <h2 className="font-semibold mb-2 text-sm sm:text-base">Bill To:</h2>
                 {isEditing ? (
                   <input
                     value={bill.partyName}
                     onChange={(e) =>
                       setBill((prev) => ({ ...prev, partyName: e.target.value }))
                     }
-                    className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 ${
+                    className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base ${
                       darkMode
                         ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                         : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -763,7 +683,7 @@ const ViewBill = ({ darkMode }) => {
                   />
                 ) : (
                   <p
-                    className={`text-lg ${
+                    className={`text-base sm:text-lg ${
                       darkMode ? "text-gray-100" : "text-gray-800"
                     }`}
                   >
@@ -776,10 +696,10 @@ const ViewBill = ({ darkMode }) => {
                   darkMode ? "bg-gray-700" : "bg-gray-100"
                 }`}
               >
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label
-                      className={`block text-sm font-medium mb-1 ${
+                      className={`block text-xs sm:text-sm font-medium mb-1 ${
                         darkMode ? "text-gray-300" : "text-gray-700"
                       }`}
                     >
@@ -789,7 +709,7 @@ const ViewBill = ({ darkMode }) => {
                       value={status}
                       onChange={(e) => handleStatusChange(e.target.value)}
                       disabled={!isEditing}
-                      className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                      className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base ${
                         darkMode
                           ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                           : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -802,7 +722,7 @@ const ViewBill = ({ darkMode }) => {
                   </div>
                   <div>
                     <label
-                      className={`block text-sm font-medium mb-1 ${
+                      className={`block text-xs sm:text-sm font-medium mb-1 ${
                         darkMode ? "text-gray-300" : "text-gray-700"
                       }`}
                     >
@@ -824,7 +744,7 @@ const ViewBill = ({ darkMode }) => {
                       }}
                       disabled={!isEditing || status === "paid"}
                       min="0"
-                      className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                      className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base ${
                         darkMode
                           ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                           : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -836,14 +756,14 @@ const ViewBill = ({ darkMode }) => {
             </div>
 
             {/* Items Table */}
-            <div className="mb-6">
-              <div className="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+            <div className="mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-4">
                 <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
                   <input
                     type="text"
                     placeholder="Search items..."
                     onChange={(e) => handleSearch(e.target.value)}
-                    className={`w-full sm:w-64 p-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                    className={`w-full sm:w-64 p-2 rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base ${
                       darkMode
                         ? "bg-gray-600 border-gray-500 text-gray-100 placeholder-gray-400 focus:ring-[#b8966f]"
                         : "bg-gray-50 border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-[#b8966f]"
@@ -852,7 +772,7 @@ const ViewBill = ({ darkMode }) => {
                   <select
                     value={sortField}
                     onChange={(e) => setSortField(e.target.value)}
-                    className={`w-full sm:w-40 p-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                    className={`w-full sm:w-40 p-2 rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base ${
                       darkMode
                         ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                         : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -862,9 +782,9 @@ const ViewBill = ({ darkMode }) => {
                     <option value="particulars">Sort by Name</option>
                   </select>
                 </div>
-                <div className="text-right">
+                <div className="text-left sm:text-right">
                   <p
-                    className={`text-lg font-semibold ${
+                    className={`text-base sm:text-lg font-semibold ${
                       darkMode ? "text-gray-100" : "text-gray-800"
                     }`}
                   >
@@ -883,36 +803,22 @@ const ViewBill = ({ darkMode }) => {
                   }`}
                 >
                   <thead
-                    className={`${darkMode ? "bg-gray-700" : "bg-gray-100"}`}
+                    className={`${darkMode ? "bg-gray-700" : "bg-gray-100"} text-xs sm:text-sm`}
                   >
                     <tr>
-                      <th className="p-3 text-left text-sm font-semibold">
-                        S.No
-                      </th>
-                      <th className="p-3 text-left text-sm font-semibold">
-                        Particulars
-                      </th>
+                      <th className="p-2 sm:p-3 text-left font-semibold">S.No</th>
+                      <th className="p-2 sm:p-3 text-left font-semibold">Particulars</th>
                       {isEditing && (
                         <>
-                          <th className="p-3 text-left text-sm font-semibold">
-                            Type
-                          </th>
-                          <th className="p-3 text-left text-sm font-semibold">
-                            Size
-                          </th>
+                          <th className="p-2 sm:p-3 text-left font-semibold">Type</th>
+                          <th className="p-2 sm:p-3 text-left font-semibold">Size</th>
                         </>
                       )}
-                      <th className="p-3 text-left text-sm font-semibold">Qty</th>
-                      <th className="p-3 text-left text-sm font-semibold">
-                        Rate
-                      </th>
-                      <th className="p-3 text-left text-sm font-semibold">
-                        Total
-                      </th>
+                      <th className="p-2 sm:p-3 text-left font-semibold">Qty</th>
+                      <th className="p-2 sm:p-3 text-left font-semibold">Rate</th>
+                      <th className="p-2 sm:p-3 text-left font-semibold">Total</th>
                       {isEditing && (
-                        <th className="p-3 text-left text-sm font-semibold">
-                          Actions
-                        </th>
+                        <th className="p-2 sm:p-3 text-left font-semibold">Actions</th>
                       )}
                     </tr>
                   </thead>
@@ -930,7 +836,7 @@ const ViewBill = ({ darkMode }) => {
                       .map((item) => (
                         <tr
                           key={item.id}
-                          className={`border-t transition-colors ${
+                          className={`border-t transition-colors text-xs sm:text-sm ${
                             darkMode
                               ? item.id % 2 === 0
                                 ? "bg-gray-800"
@@ -940,8 +846,8 @@ const ViewBill = ({ darkMode }) => {
                               : "bg-gray-50"
                           } ${darkMode ? "hover:bg-gray-600" : "hover:bg-gray-100"}`}
                         >
-                          <td className="p-3">{item.id}</td>
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3">{item.id}</td>
+                          <td className="p-2 sm:p-3">
                             {isEditing ? (
                               <input
                                 value={item.particulars}
@@ -952,7 +858,7 @@ const ViewBill = ({ darkMode }) => {
                                     e.target.value
                                   )
                                 }
-                                className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 ${
+                                className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
                                   darkMode
                                     ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                                     : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -965,7 +871,7 @@ const ViewBill = ({ darkMode }) => {
                           </td>
                           {isEditing && (
                             <>
-                              <td className="p-3">
+                              <td className="p-2 sm:p-3">
                                 <select
                                   value={item.type}
                                   onChange={(e) =>
@@ -975,7 +881,7 @@ const ViewBill = ({ darkMode }) => {
                                       e.target.value
                                     )
                                   }
-                                  className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 ${
+                                  className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
                                     darkMode
                                       ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                                       : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -998,7 +904,7 @@ const ViewBill = ({ darkMode }) => {
                                       )
                                     }
                                     placeholder="Custom Type"
-                                    className={`w-full p-1 mt-1 rounded-lg focus:outline-none focus:ring-2 ${
+                                    className={`w-full p-1 mt-1 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
                                       darkMode
                                         ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                                         : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -1006,7 +912,7 @@ const ViewBill = ({ darkMode }) => {
                                   />
                                 )}
                               </td>
-                              <td className="p-3">
+                              <td className="p-2 sm:p-3">
                                 <select
                                   value={item.size}
                                   onChange={(e) =>
@@ -1016,7 +922,7 @@ const ViewBill = ({ darkMode }) => {
                                       e.target.value
                                     )
                                   }
-                                  className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 ${
+                                  className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
                                     darkMode
                                       ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                                       : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -1039,7 +945,7 @@ const ViewBill = ({ darkMode }) => {
                                       )
                                     }
                                     placeholder="Custom Size"
-                                    className={`w-full p-1 mt-1 rounded-lg focus:outline-none focus:ring-2 ${
+                                    className={`w-full p-1 mt-1 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
                                       darkMode
                                         ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                                         : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -1049,7 +955,7 @@ const ViewBill = ({ darkMode }) => {
                               </td>
                             </>
                           )}
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3">
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1059,7 +965,7 @@ const ViewBill = ({ darkMode }) => {
                                 }
                                 min="1"
                                 step="1"
-                                className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 ${
+                                className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
                                   darkMode
                                     ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                                     : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -1070,7 +976,7 @@ const ViewBill = ({ darkMode }) => {
                               item.qty
                             )}
                           </td>
-                          <td className="p-3">
+                          <td className="p-2 sm:p-3">
                             {isEditing ? (
                               <input
                                 type="number"
@@ -1084,7 +990,7 @@ const ViewBill = ({ darkMode }) => {
                                 }
                                 min="1"
                                 step="0.01"
-                                className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 ${
+                                className={`w-full p-1 rounded-lg focus:outline-none focus:ring-2 text-xs sm:text-sm ${
                                   darkMode
                                     ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                                     : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -1095,11 +1001,11 @@ const ViewBill = ({ darkMode }) => {
                               `Rs ${Number(item.rate || 0).toFixed(2)}`
                             )}
                           </td>
-                          <td className="p-3 font-medium">
+                          <td className="p-2 sm:p-3 font-medium">
                             Rs {Number(item.total || 0).toFixed(2)}
                           </td>
                           {isEditing && (
-                            <td className="p-3">
+                            <td className="p-2 sm:p-3">
                               <button
                                 onClick={() => removeRow(item.id)}
                                 className={`px-2 py-1 rounded-lg transition-transform hover:scale-105 ${
@@ -1120,22 +1026,22 @@ const ViewBill = ({ darkMode }) => {
             </div>
 
             {/* Grand Total */}
-            <div className="flex justify-end mb-6">
+            <div className="flex justify-end mb-4 sm:mb-6">
               <div
                 className={`p-4 rounded-lg shadow-sm ${
                   darkMode ? "bg-gray-700" : "bg-gray-100"
                 }`}
               >
-                <p className={`text-xl font-bold text-[#b8966f]`}>
+                <p className={`text-lg sm:text-xl font-bold text-[#b8966f]`}>
                   Total: Rs {Number(bill.grandTotal || 0).toFixed(2)}
                 </p>
               </div>
             </div>
 
             {/* Notes */}
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <label
-                className={`block text-sm font-medium mb-2 ${
+                className={`block text-xs sm:text-sm font-medium mb-2 ${
                   darkMode ? "text-gray-300" : "text-gray-700"
                 }`}
               >
@@ -1145,7 +1051,7 @@ const ViewBill = ({ darkMode }) => {
                 <textarea
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 transition-colors ${
+                  className={`w-full p-2 rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base ${
                     darkMode
                       ? "bg-gray-600 border-gray-500 text-gray-100 focus:ring-[#b8966f]"
                       : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-[#b8966f]"
@@ -1154,7 +1060,7 @@ const ViewBill = ({ darkMode }) => {
                 />
               ) : (
                 <p
-                  className={`p-3 rounded-lg ${
+                  className={`p-3 rounded-lg text-sm sm:text-base ${
                     darkMode
                       ? "bg-gray-700 text-gray-100"
                       : "bg-gray-100 text-gray-800"
@@ -1167,7 +1073,7 @@ const ViewBill = ({ darkMode }) => {
 
             {/* Footer */}
             <div
-              className={`border-t pt-4 text-center text-sm ${
+              className={`border-t pt-4 text-center text-xs sm:text-sm ${
                 darkMode ? "text-gray-400" : "text-gray-600"
               }`}
             >
@@ -1175,7 +1081,7 @@ const ViewBill = ({ darkMode }) => {
                 Thank you for choosing Star Printing!
               </p>
               <p>Contact: +91 9350432551 | Address: 1F-51, Faridabad</p>
-              <p>All prices include GST | Terms: Net 15 days</p>
+              <p> Terms:pay before 10th of month </p>
             </div>
           </div>
         </div>

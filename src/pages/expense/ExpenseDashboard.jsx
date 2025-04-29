@@ -213,21 +213,24 @@ const ExpenseDashboard = ({ darkMode }) => {
   const handleAddExpense = async (formData) => {
     try {
       const amount = parseFloat(formData.amount);
+      const date = formData.date ? new Date(formData.date) : null;
       if (
-        !formData.date ||
+        !date ||
+        isNaN(date) ||
         !formData.description ||
         isNaN(amount) ||
         amount <= 0 ||
-        !formData.category
+        !formData.category ||
+        !formData.type
       ) {
         setToast({ message: "Please fill all fields with valid data", type: "error" });
         return;
       }
       const newTx = {
-        date: formData.date,
         description: formData.description,
         category: formData.category,
         amount: amount,
+        date: date.toISOString(),
         type: formData.type,
       };
       const response = await api.post("/expenses", newTx);
@@ -327,7 +330,7 @@ const ExpenseDashboard = ({ darkMode }) => {
   if (loading) {
     return (
       <div
-        className={`max-w-7xl mx-auto p-6 min-h-screen transition-colors duration-300 ${
+        className={`max-w-7xl mx-auto  min-h-screen transition-colors duration-300 ${
           darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
         }`}
       >
@@ -361,7 +364,7 @@ const ExpenseDashboard = ({ darkMode }) => {
   if (error) {
     return (
       <div
-        className={`max-w-7xl mx-auto p-6 min-h-screen transition-colors duration-300 ${
+        className={`max-w-7xl mx-auto p-0 min-h-screen transition-colors duration-300 ${
           darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
         }`}
       >
@@ -389,7 +392,7 @@ const ExpenseDashboard = ({ darkMode }) => {
 
   return (
     <div
-      className={`max-w-7xl mx-auto p-6 min-h-screen transition-colors duration-300 ${
+      className={`max-w-7xl mx-auto p-1 min-h-screen transition-colors duration-300 ${
         darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
       }`}
     >

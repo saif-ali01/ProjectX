@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import Toast from "../../components/common/Toast";
 
+// AddExpenseForm component for adding new expenses
 const AddExpenseForm = ({ onSubmit, onCancel, darkMode }) => {
   const [formData, setFormData] = useState({
     amount: "",
@@ -14,11 +15,13 @@ const AddExpenseForm = ({ onSubmit, onCancel, darkMode }) => {
   const expenseCategories = ["Food", "Travel", "Equipment", "Other"];
   const types = ["Personal", "Professional"];
 
+  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Handle form submission
   const handleFormSubmit = (e) => {
     e.preventDefault();
     onSubmit(formData);
@@ -29,27 +32,26 @@ const AddExpenseForm = ({ onSubmit, onCancel, darkMode }) => {
       date: "",
       description: "",
     });
-    setToast({ message: "Expense added successfully", type: "success" });
   };
 
-  const inputStyles = `w-full p-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300`;
+  const inputStyles = `w-full p-2 sm:p-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 text-sm sm:text-base`;
   const lightInput = `bg-gray-50 border-gray-300 text-gray-900 placeholder:text-gray-400 focus:ring-blue-600`;
   const darkInput = `bg-gray-700 border-gray-600 text-gray-100 placeholder:text-gray-400 focus:ring-blue-500`;
 
   return (
     <div
-      className={`w-full max-w-xl mx-auto p-6 rounded-lg shadow-md border transition-colors duration-300 ${
+      className={`w-full max-w-md sm:max-w-lg mx-auto p-4 sm:p-6 rounded-lg shadow-md border transition-colors duration-300 ${
         darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
       }`}
     >
       <h2
-        className={`text-2xl font-semibold mb-6 text-center ${
+        className={`text-lg sm:text-xl font-semibold mb-4 sm:mb-6 text-center ${
           darkMode ? "text-gray-100" : "text-gray-900"
         }`}
       >
         Add New Expense
       </h2>
-      <form onSubmit={handleFormSubmit} className="space-y-5">
+      <form onSubmit={handleFormSubmit} className="space-y-4 sm:space-y-5">
         <div>
           <label
             htmlFor="amount"
@@ -82,7 +84,7 @@ const AddExpenseForm = ({ onSubmit, onCancel, darkMode }) => {
           >
             Type
           </label>
-          <div className="flex gap-4">
+          <div className="flex flex-wrap gap-4">
             {types.map((t) => (
               <label key={t} className="flex items-center gap-2">
                 <input
@@ -174,10 +176,10 @@ const AddExpenseForm = ({ onSubmit, onCancel, darkMode }) => {
           />
         </div>
 
-        <div className="flex gap-4 mt-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
           <button
             type="submit"
-            className={`w-full py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
+            className={`w-full py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base ${
               darkMode
                 ? "bg-blue-500 text-white hover:bg-blue-600"
                 : "bg-blue-600 text-white hover:bg-blue-700"
@@ -189,7 +191,7 @@ const AddExpenseForm = ({ onSubmit, onCancel, darkMode }) => {
           <button
             type="button"
             onClick={onCancel}
-            className={`w-full py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
+            className={`w-full py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base ${
               darkMode
                 ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"

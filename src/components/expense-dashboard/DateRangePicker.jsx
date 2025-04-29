@@ -2,6 +2,7 @@ import React from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
+// DateRangePicker component for selecting date range and time frame
 const DateRangePicker = ({
   startDate,
   setStartDate,
@@ -14,15 +15,15 @@ const DateRangePicker = ({
 }) => {
   return (
     <div
-      className={`rounded-lg shadow-md p-6 mb-6 ${
+      className={`rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6 border transition-colors duration-300 ${
         darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
-      } border transition-colors duration-300`}
+      }`}
     >
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex gap-4">
+      <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center justify-between">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 w-full sm:w-auto">
           <div>
             <label
-              className={`block text-sm font-medium mb-2 ${
+              className={`block text-sm font-medium mb-1 sm:mb-2 ${
                 darkMode ? "text-gray-200" : "text-gray-700"
               }`}
             >
@@ -31,7 +32,7 @@ const DateRangePicker = ({
             <DatePicker
               selected={startDate}
               onChange={(date) => setStartDate(date)}
-              className={`p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`w-full p-2 sm:p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base ${
                 darkMode
                   ? "bg-gray-700 border-gray-600 text-gray-100"
                   : "bg-gray-50 border-gray-300 text-gray-900"
@@ -42,7 +43,7 @@ const DateRangePicker = ({
           </div>
           <div>
             <label
-              className={`block text-sm font-medium mb-2 ${
+              className={`block text-sm font-medium mb-1 sm:mb-2 ${
                 darkMode ? "text-gray-200" : "text-gray-700"
               }`}
             >
@@ -51,7 +52,7 @@ const DateRangePicker = ({
             <DatePicker
               selected={endDate}
               onChange={(date) => setEndDate(date)}
-              className={`p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`w-full p-2 sm:p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base ${
                 darkMode
                   ? "bg-gray-700 border-gray-600 text-gray-100"
                   : "bg-gray-50 border-gray-300 text-gray-900"
@@ -62,7 +63,7 @@ const DateRangePicker = ({
           </div>
           <div>
             <label
-              className={`block text-sm font-medium mb2 ${
+              className={`block text-sm font-medium mb-1 sm:mb-2 ${
                 darkMode ? "text-gray-200" : "text-gray-700"
               }`}
             >
@@ -71,7 +72,7 @@ const DateRangePicker = ({
             <select
               value={timeFrame}
               onChange={(e) => setTimeFrame(e.target.value)}
-              className={`p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+              className={`w-full p-2 sm:p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm sm:text-base ${
                 darkMode
                   ? "bg-gray-700 border-gray-600 text-gray-100"
                   : "bg-gray-50 border-gray-300 text-gray-900"
@@ -85,7 +86,7 @@ const DateRangePicker = ({
         </div>
         <button
           onClick={() => setAddModalOpen(true)}
-          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+          className={`w-full sm:w-auto px-4 py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base ${
             darkMode
               ? "bg-blue-500 text-white hover:bg-blue-600"
               : "bg-blue-600 text-white hover:bg-blue-700"

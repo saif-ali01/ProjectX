@@ -25,6 +25,7 @@ ChartJS.register(
   Legend
 );
 
+// ChartPage component for displaying revenue trend chart
 const ChartPage = ({ darkMode, toggleDarkMode }) => {
   const navigate = useNavigate();
   const [chartData, setChartData] = useState(null);
@@ -33,25 +34,17 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
   const [timeFrame, setTimeFrame] = useState("daily");
   const [revenueData, setRevenueData] = useState([]);
 
+  // Fetch revenue stats from API
   useEffect(() => {
     const fetchStats = async () => {
       try {
         setLoading(true);
         setError("");
-        // Log the full URL for debugging
-        const url = `/bills/stats?timeFrame=${timeFrame}`;
-        console.log("Fetching from:", `${api.defaults.baseURL}${url}`);
-        const response = await api.get(url);
-        if (!response.data) {
-          console.warn("Empty response, using mock data");
-          const mockData = [
-            { date: "2025-04-01", totalRevenue: 1000 },
-            { date: "2025-04-02", totalRevenue: 1200 },
-          ];
-          response.data = mockData;
-        }
-
-        const stats = response.data;
+        const response = await api.get(`/bills/stats?timeFrame=${timeFrame}`);
+        let stats = response.data || [
+          { date: "2025-04-01", totalRevenue: 1000 },
+          { date: "2025-04-02", totalRevenue: 1200 },
+        ];
 
         // Calculate growth/loss
         const calculatedData = stats.map((stat, index) => {
@@ -66,48 +59,44 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
         // Prepare chart data
         const labels = calculatedData.map((stat) => stat.date);
         const data = calculatedData.map((stat) => stat.totalRevenue);
-        const backgroundColors = calculatedData.map((stat) =>
-          stat.change > 0
-            ? "rgba(34, 197, 94, 0.6)"
-            : stat.change < 0
-            ? "rgba(239, 68, 68, 0.6)"
-            : "rgba(156, 163, 175, 0.6)"
-        );
-        const borderColors = calculatedData.map((stat) =>
-          stat.change > 0
-            ? "rgba(34, 197, 94, 1)"
-            : stat.change < 0
-            ? "rgba(239, 68, 68, 1)"
-            : "rgba(156, 163, 175, 1)"
-        );
 
         setChartData({
           labels,
           datasets: [
             {
-              label: `Revenue (₹) - ${
-                timeFrame.charAt(0).toUpperCase() + timeFrame.slice(1)
-              }`,
+              label: `Revenue (₹) - ${timeFrame.charAt(0).toUpperCase() + timeFrame.slice(1)}`,
               data,
-              backgroundColor: backgroundColors,
-              borderColor: borderColors,
               borderWidth: 2,
               pointRadius: 5,
               pointHoverRadius: 7,
               fill: false,
+              segment: {
+                borderColor: (ctx) => {
+                  const index = ctx.p1DataIndex;
+                  if (index === 0 || calculatedData[index].change === 0) return "#9CA3AF"; // Gray for no change
+                  return calculatedData[index].change > 0 ? "#22C55E" : "#EF4444";
+                },
+                backgroundColor: (ctx) => {
+                  const index = ctx.p1DataIndex;
+                  if (index === 0 || calculatedData[index].change === 0) return "#9CA3AF"; // Gray for no change
+                  return calculatedData[index].change > 0 ? "#22C55E" : "#EF4444";
+                },
+              },
+              pointBackgroundColor: calculatedData.map((stat) =>
+                stat.change === 0 ? "#9CA3AF" : stat.change > 0 ? "#22C55E" : "#EF4444"
+              ),
+              pointBorderColor: calculatedData.map((stat) =>
+                stat.change === 0 ? "#9CA3AF" : stat.change > 0 ? "#22C55E" : "#EF4444"
+              ),
             },
           ],
         });
       } catch (err) {
-        // Improved error handling for 404
-        let errorMessage = "Failed to load chart data";
-        if (err.response?.status === 404) {
-          errorMessage = `The API endpoint /stats?timeFrame=${timeFrame} was not found. Please check the server configuration.`;
-        } else {
-          errorMessage = err.response?.data?.message || err.message || "Failed to load chart data";
-        }
+        const errorMessage =
+          err.response?.status === 404
+            ? `API endpoint /stats?timeFrame=${timeFrame} not found.`
+            : err.response?.data?.message || "Failed to load chart data";
         setError(errorMessage);
-        console.error("Fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -116,22 +105,22 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
     fetchStats();
   }, [timeFrame]);
 
+  // Chart options for responsive display
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     plugins: {
       legend: {
         position: "top",
         labels: {
-          font: { size: 14 },
+          font: { size: 12 },
           color: darkMode ? "#E5E7EB" : "#1F2937",
         },
       },
       title: {
         display: true,
-        text: `Business Revenue Trend (${
-          timeFrame.charAt(0).toUpperCase() + timeFrame.slice(1)
-        })`,
-        font: { size: 18 },
+        text: `Business Revenue Trend (${timeFrame.charAt(0).toUpperCase() + timeFrame.slice(1)})`,
+        font: { size: 16 },
         padding: { top: 10, bottom: 20 },
         color: darkMode ? "#E5E7EB" : "#1F2937",
       },
@@ -152,6 +141,7 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
         bodyColor: darkMode ? "#E5E7EB" : "#1F2937",
         borderColor: darkMode ? "#4B5563" : "#9CA3AF",
         borderWidth: 1,
+        bodyFont: { size: 12 },
       },
     },
     scales: {
@@ -165,38 +155,41 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
               ? "Month"
               : "Year",
           color: darkMode ? "#E5E7EB" : "#1F2937",
+          font: { size: 12 },
         },
         grid: { display: false },
-        ticks: { color: darkMode ? "#E5E7EB" : "#1F2937" },
+        ticks: { color: darkMode ? "#E5E7EB" : "#1F2937", font: { size: 10 } },
       },
       y: {
         title: {
           display: true,
           text: "Revenue (₹)",
           color: darkMode ? "#E5E7EB" : "#1F2937",
+          font: { size: 12 },
         },
         beginAtZero: true,
         grid: {
           color: darkMode ? "rgba(229, 231, 235, 0.2)" : "rgba(0, 0, 0, 0.1)",
         },
-        ticks: { color: darkMode ? "#E5E7EB" : "#1F2937" },
+        ticks: { color: darkMode ? "#E5E7EB" : "#1F2937", font: { size: 10 } },
       },
     },
   };
 
+  // Loading state
   if (loading) {
     return (
       <div
-        className={`max-w-6xl mx-auto p-6 min-h-screen ${
+        className={`max-w-full mx-auto p-4 sm:p-6 min-h-screen ${
           darkMode ? "bg-gray-900" : "bg-gray-50"
         } transition-colors duration-300`}
       >
         <div
-          className={`p-4 rounded-lg flex items-center ${
+          className={`p-3 sm:p-4 rounded-lg flex items-center text-sm sm:text-base ${
             darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-700"
           }`}
         >
-          <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+          <svg className="animate-spin h-4 sm:h-5 w-4 sm:w-5 mr-2 sm:mr-3" viewBox="0 0 24 24">
             <circle
               className="opacity-25"
               cx="12"
@@ -218,35 +211,30 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div
-        className={`max-w-6xl mx-auto p-6 min-h-screen ${
+        className={`max-w-full mx-auto p-4 sm:p-6 min-h-screen ${
           darkMode ? "bg-gray-900" : "bg-gray-50"
         } transition-colors duration-300`}
       >
         <div
-          className={`p-4 rounded-lg ${
+          className={`p-3 sm:p-4 rounded-lg text-sm sm:text-base ${
             darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"
           }`}
         >
           <h2
-            className={`font-bold mb-2 ${
+            className={`font-bold mb-2 text-base sm:text-lg ${
               darkMode ? "text-gray-100" : "text-gray-900"
             }`}
           >
             Error Loading Chart:
           </h2>
-          <p className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-            {error}
-          </p>
+          <p className={`${darkMode ? "text-gray-300" : "text-gray-700"}`}>{error}</p>
           <button
             onClick={() => navigate("/bills")}
-            className={`mt-4 px-4 py-2 rounded-lg hover:scale-105 transition-colors ${
-              darkMode
-                ? "bg-[#b8966f] text-white hover:bg-[#a7845f]"
-                : "bg-[#b8966f] text-white hover:bg-[#a7845f]"
-            }`}
+            className={`mt-3 sm:mt-4 px-3 sm:px-4 py-1 sm:py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base text-white bg-gradient-to-r from-cyan-500 to-teal-600`}
           >
             Back to Bills
           </button>
@@ -255,35 +243,25 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
     );
   }
 
+  // Main chart view
   return (
     <div
-      className={`max-w-6xl mx-auto p-6 min-h-screen ${
+      className={`max-w-full mx-auto p-4 sm:p-6 min-h-screen ${
         darkMode ? "bg-gray-900" : "bg-gray-50"
       } transition-colors duration-300`}
     >
-      <div className="bg-[#b8966f] text-white p-6 rounded-t-lg shadow-lg flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Star Printing - Revenue Chart</h1>
-        <button
-          onClick={toggleDarkMode}
-          className={`p-2 rounded-full hover:scale-105 transition-colors ${
-            darkMode
-              ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
-              : "bg-gray-200 text-gray-900 hover:bg-gray-300"
-          }`}
-          aria-label="Toggle dark mode"
-        >
-          {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
-        </button>
+      <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white p-4 sm:p-6 rounded-t-lg shadow-lg flex flex-col sm:flex-row justify-between items-center gap-3 sm:gap-0">
+        <h1 className="text-lg sm:text-2xl font-bold">Star Printing - Revenue Chart</h1>
+
       </div>
       <div
-        className={`p-6 rounded-b-lg shadow-lg border ${
-          darkMode
-            ? "bg-gray-800 border-gray-600"
-            : "bg-white border-gray-200"
+        className={`p-4 sm:p-6 rounded-b-lg shadow-lg border max-w-full ${
+          darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"
         } transition-colors duration-300`}
       >
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex gap-4 items-center">
+        {/* Controls frame for Time Frame dropdown and Back to Bills button */}
+        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 mb-4 sm:mb-6 w-full sm:w-auto">
+          <div className="flex items-center gap-3 w-full sm:w-auto">
             <label
               className={`text-sm font-medium ${
                 darkMode ? "text-gray-300" : "text-gray-700"
@@ -294,10 +272,10 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
             <select
               value={timeFrame}
               onChange={(e) => setTimeFrame(e.target.value)}
-              className={`p-2 border rounded-lg ${
+              className={`w-full sm:w-auto p-2 sm:p-3 border rounded-lg focus:outline-none focus:ring-2 text-sm sm:text-base ${
                 darkMode
-                  ? "border-gray-600 bg-gray-700 text-gray-100"
-                  : "border-gray-300 bg-gray-50 text-gray-900"
+                  ? "bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500"
+                  : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-600"
               }`}
             >
               <option value="daily">Daily</option>
@@ -306,28 +284,22 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
             </select>
           </div>
           <button
-            onClick={() => navigate("/bills")}
-            className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${
-              darkMode
-                ? "bg-[#b8966f] text-white hover:bg-[#a7845f]"
-                : "bg-[#b8966f] text-white hover:bg-[#a7845f]"
-            }`}
+            onClick={() => navigate("/bill-section")}
+            className={`w-full sm:w-auto px-3 sm:px-4 py-3 sm:py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base text-white bg-gradient-to-r from-cyan-500 to-teal-600`}
           >
             Back to Bills
           </button>
         </div>
-        <div className="mb-6">
+        <div className="h-64 sm:h-80 lg:h-96 mb-4 sm:mb-6">
           <Line data={chartData} options={chartOptions} />
         </div>
-        <div className="flex justify-between items-center">
-          <div
-            className={`text-sm ${
-              darkMode ? "text-gray-400" : "text-gray-600"
-            }`}
-          >
-            <p>Data represents {timeFrame} revenue from paid bills</p>
-            <p>Green: Growth | Red: Loss | Gray: No Change</p>
-          </div>
+        <div className="text-xs sm:text-sm text-center sm:text-left">
+          <p className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+            Data represents {timeFrame} revenue from paid bills
+          </p>
+          <p className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+            Green: Growth | Red: Loss | Gray: No Change
+          </p>
         </div>
       </div>
     </div>

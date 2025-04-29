@@ -19,4 +19,10 @@ export default defineConfig({
       },
     },
   },
+  
+  // Expose server to network
+  server: {
+    host: true, // Exposes the server to the local network
+    port: 5173, // Optional: specify port (default is 5173)
+  },
 });

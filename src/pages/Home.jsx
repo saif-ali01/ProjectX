@@ -8,7 +8,6 @@ import {
   Users,
   TrendingUp,
   DollarSign,
-  FileText as FileTextIcon,
   Moon,
   Sun,
   CreditCard,
@@ -16,7 +15,41 @@ import {
   Briefcase,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
-import Toast from "../components/common/Toast"
+import Toast from "../components/common/Toast";
+
+// Error Boundary Component
+class ErrorBoundary extends Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error: error.message || "An unexpected error occurred" };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error in Home:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.error) {
+      const { darkMode, navigate } = this.props;
+      return (
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
+          <div className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"}`}>
+            <h2 className={`text-lg font-semibold mb-3 ${darkMode ? "text-gray-100" : "text-gray-900"}`}>Error Loading Homepage</h2>
+            <p className={`mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{this.state.error}</p>
+            <button
+              onClick={() => navigate("/")}
+              className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${darkMode ? "bg-gray-700 text-gray-100 hover:bg-gray-600" : "bg-gray-200 text-gray-900 hover:bg-gray-300"}`}
+            >
+              Reload
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 const Home = ({ darkMode, toggleDarkMode }) => {
   const navigate = useNavigate();
@@ -33,39 +66,32 @@ const Home = ({ darkMode, toggleDarkMode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Fetch dashboard data
+  // Fetch dashboard data from API
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         setLoading(true);
         setError(null);
-
-        // Get userId from localStorage (assuming JWT auth)
         const userId = localStorage.getItem("userId");
-        const summaryUrl = userId ? `/dashboard/summary?userId=${userId}` : "/dashboard/summary";
+        const baseUrl = userId ? `/dashboard/summary?userId=${userId}` : "/dashboard/summary";
         const revenueUrl = userId ? `/dashboard/revenue-trend?userId=${userId}` : "/dashboard/revenue-trend";
 
-        console.log("Fetching summary from:", `${api.defaults.baseURL}${summaryUrl}`);
-        const summaryResponse = await api.get(summaryUrl);
-        console.log("Summary response:", summaryResponse.data);
+        const [summaryResponse, revenueResponse] = await Promise.all([
+          api.get(baseUrl),
+          api.get(revenueUrl),
+        ]);
+
         setSummaryData({
           totalRevenue: summaryResponse.data.totalRevenue || 0,
           totalExpenses: summaryResponse.data.totalExpenses || 0,
           pendingInvoices: summaryResponse.data.pendingInvoices || 0,
           activeClients: summaryResponse.data.activeClients || 0,
         });
-
-        console.log("Fetching revenue trend from:", `${api.defaults.baseURL}${revenueUrl}`);
-        const revenueResponse = await api.get(revenueUrl);
-        console.log("Revenue trend response:", revenueResponse.data);
         setRevenueData(revenueResponse.data || []);
       } catch (err) {
-        console.error("Fetch error:", err);
-        console.error("Failed URL:", err.config?.url);
-        console.error("Response data:", err.response?.data);
         const errorMessage =
           err.response?.status === 404
-            ? "Dashboard data not found. Please check server routes."
+            ? "Dashboard data not found."
             : err.response?.data?.message || "Failed to load dashboard data";
         setError(errorMessage);
         setToast({ message: errorMessage, type: "error", autoClose: 5000 });
@@ -75,16 +101,15 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     };
 
     fetchDashboardData();
-  }, [navigate]);
+  }, []);
 
-  // Dynamically set chart dimensions
+  // Update chart dimensions responsively
   useEffect(() => {
     const updateDimensions = () => {
       if (chartContainerRef.current) {
         const { offsetWidth } = chartContainerRef.current;
         const width = Math.min(offsetWidth - 40, 600);
-        const height = Math.max(width * 0.6, 300);
-        setChartDimensions({ width, height });
+        setChartDimensions({ width, height: Math.max(width * 0.6, 300) });
       }
     };
 
@@ -117,66 +142,12 @@ const Home = ({ darkMode, toggleDarkMode }) => {
       };
       img.src = "data:image/svg+xml;base64," + btoa(svgData);
     } catch (err) {
-      console.error("Export error:", err);
       setToast({ message: "Failed to export chart", type: "error", autoClose: 3000 });
     }
   };
 
-  // Error Boundary Class Component
-  class ErrorBoundary extends Component {
-    state = { error: null };
-
-    static getDerivedStateFromError(error) {
-      return { error: error.message || "An unexpected error occurred" };
-    }
-
-    componentDidCatch(error, errorInfo) {
-      console.error("Error in Home:", error, errorInfo);
-    }
-
-    render() {
-      if (this.state.error) {
-        return (
-          <div className="max-w-7xl mx-auto p-6">
-            <div
-              className={`p-6 rounded-lg shadow-md ${
-                darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"
-              }`}
-            >
-              <h2
-                className={`text-lg font-semibold mb-3 ${
-                  darkMode ? "text-gray-100" : "text-gray-900"
-                }`}
-              >
-                Error Loading Homepage
-              </h2>
-              <p
-                className={`mb-4 ${
-                  darkMode ? "text-gray-300" : "text-gray-700"
-                }`}
-              >
-                {this.state.error}
-              </p>
-              <button
-                onClick={() => navigate("/")}
-                className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${
-                  darkMode
-                    ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
-                    : "bg-gray-200 text-gray-900 hover:bg-gray-300"
-                }`}
-              >
-                Reload
-              </button>
-            </div>
-          </div>
-        );
-      }
-      return this.props.children;
-    }
-  }
-
-  // Format summary data for display
-  const formattedSummaryData = [
+  // Summary data configuration
+  const summaryCards = [
     {
       title: "Total Revenue",
       value: `₹${summaryData.totalRevenue.toLocaleString("en-IN")}`,
@@ -194,7 +165,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     {
       title: "Pending Invoices",
       value: summaryData.pendingInvoices.toString(),
-      icon: <FileTextIcon className="w-6 h-6" />,
+      icon: <FileText className="w-6 h-6" />,
       onClick: () => navigate("/bill-section"),
       color: "from-yellow-500 to-orange-600",
     },
@@ -207,73 +178,48 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     },
   ];
 
+  // Quick action cards configuration
+  const actionCards = [
+    { icon: <BarChart3 className="w-6 h-6" />, title: "Reports", onClick: () => navigate("/reports"), color: "from-blue-500 to-indigo-600" },
+    { icon: <FileText className="w-6 h-6" />, title: "Invoices", onClick: () => navigate("/bill-section"), color: "from-green-500 to-emerald-600" },
+    { icon: <Users className="w-6 h-6" />, title: "Clients", onClick: () => navigate("/clients"), color: "from-yellow-500 to-orange-600" },
+    { icon: <Settings className="w-6 h-6" />, title: "Settings", onClick: () => navigate("/settings"), color: "from-gray-600 to-gray-800" },
+    { icon: <CreditCard className="w-6 h-6" />, title: "Expenses", onClick: () => navigate("/expenses"), color: "from-red-600 to-rose-700" },
+    { icon: <FilePlus className="w-6 h-6" />, title: "Create Bill", onClick: () => navigate("/create-bill"), color: "from-purple-500 to-violet-600" },
+    { icon: <Briefcase className="w-6 h-6" />, title: "Add Today's Work", onClick: () => navigate("/add-work"), color: "from-teal-500 to-cyan-600" },
+  ];
+
   return (
-    <ErrorBoundary>
-      <div
-        className={`min-h-screen text-gray-900 ${
-          darkMode ? "bg-gray-900" : "bg-gray-50"
-        } transition-colors duration-300`}
-      >
-        <div className="max-w-7xl mx-auto p-6">
+    <ErrorBoundary darkMode={darkMode} navigate={navigate}>
+      <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto p-4 sm:p-6">
           {/* Loading State */}
           {loading && (
-            <div
-              className={`p-4 rounded-lg flex items-center animate-pulse ${
-                darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-700"
-              }`}
-            >
-              <svg className="animate-spin h-5 w-5EEEP mr-3" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                  fill="none"
-                />
+            <div className={`p-4 rounded-lg flex items-center animate-pulse ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-700"}`}>
+              <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                 <path
                   className="opacity-75"
                   fill="currentColor"
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                 />
               </svg>
-              Loading dashboard data...
+              Loading dashboard...
             </div>
           )}
 
           {/* Error State */}
           {error && (
-            <div
-              className={`p-6 rounded-lg shadow-md ${
-                darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"
-              }`}
-            >
-              <h2
-                className={`text-lg font-semibold mb-3 ${
-                  darkMode ? "text-gray-100" : "text-gray-900"
-                }`}
-              >
-                Error Loading Dashboard
-              </h2>
-              <p
-                className={`mb-4 ${
-                  darkMode ? "text-gray-300" : "text-gray-700"
-                }`}
-              >
-                {error}
-              </p>
+            <div className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"}`}>
+              <h2 className={`text-lg font-semibold mb-3 ${darkMode ? "text-gray-100" : "text-gray-900"}`}>Error Loading Dashboard</h2>
+              <p className={`mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{error}</p>
               <button
                 onClick={() => {
                   setLoading(true);
                   setError(null);
                   fetchDashboardData();
                 }}
-                className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${
-                  darkMode
-                    ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
-                    : "bg-gray-200 text-gray-900 hover:bg-gray-300"
-                }`}
+                className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${darkMode ? "bg-gray-700 text-gray-100 hover:bg-gray-600" : "bg-gray-200 text-gray-900 hover:bg-gray-300"}`}
               >
                 Retry
               </button>
@@ -284,135 +230,41 @@ const Home = ({ darkMode, toggleDarkMode }) => {
           {!loading && !error && (
             <>
               {/* Hero Section */}
-              <div
-                className={`rounded-2xls shadow-lg p-10 ${
-                  darkMode
-                    ? "bg-gray-800 border-gray-600"
-                    : "bg-white border-gray-200"
-                } mb-8 animate-fade-in border transition-colors duration-300`}
-              >
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h1
-                      className={`text-3xl md:text-4xl font-bold mb-4 ${
-                        darkMode ? "text-gray-100" : "text-gray-900"
-                      }`}
-                    >
-                      Welcome to Star Printing Dashboard
-                    </h1>
-                    <p
-                      className={`text-lg ${
-                        darkMode ? "text-gray-300" : "text-gray-700"
-                      }`}
-                    >
-                      Generate insightful reports, manage expenses, and visualize your business performance.
+              <div className={`rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 flex justify-center ${darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"} mb-8 border transition-colors`}>
+                <div className="flex flex-col sm:flex-row justify-center items-center gap-4 w-full max-w-4xl">
+                  <div className="text-center sm:text-left">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Welcome to Star Printing Dashboard</h1>
+                    <p className={`text-sm sm:text-base lg:text-lg text-center ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
+                      Manage reports, expenses, and business performance.
                     </p>
                   </div>
-                  <button
-                    onClick={toggleDarkMode}
-                    className={`p-2 rounded-full hover:scale-105 transition-colors ${
-                      darkMode
-                        ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
-                        : "bg-gray-200 text-gray-900 hover:bg-gray-300"
-                    }`}
-                    aria-label="Toggle dark mode"
-                  >
-                    {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
-                  </button>
                 </div>
               </div>
 
               {/* Quick Actions */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-12">
-                <Card
-                  icon={<BarChart3 className="w-6 h-6" />}
-                  title="Reports"
-                  onClick={() => navigate("/reports")}
-                  color="from-blue-500 to-indigo-600"
-                />
-                <Card
-                  icon={<FileText className="w-6 h-6" />}
-                  title="Invoices"
-                  onClick={() => navigate("/bill-section")}
-                  color="from-green-500 to-emerald-600"
-                />
-                <Card
-                  icon={<Users className="w-6 h-6" />}
-                  title="Clients"
-                  onClick={() => navigate("/clients")}
-                  color="from-yellow-500 to-orange-600"
-                />
-                <Card
-                  icon={<Settings className="w-6 h-6" />}
-                  title="Settings"
-                  onClick={() => navigate("/settings")}
-                  color="from-gray-600 to-gray-800"
-                />
-                <Card
-                  icon={<CreditCard className="w-6 h-6" />}
-                  title="Expenses"
-                  onClick={() => navigate("/expenses")}
-                  color="from-red-600 to-rose-700"
-                />
-                <Card
-                  icon={<FilePlus className="w-6 h-6" />}
-                  title="Create Bill"
-                  onClick={() => navigate("/create-bill")}
-                  color="from-purple-500 to-violet-600"
-                />
-                <Card
-                  icon={<Briefcase className="w-6 h-6" />}
-                  title="Add Today's Work"
-                  onClick={() => navigate("/add-work")}
-                  color="from-teal-500 to-cyan-600"
-                />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-10">
+                {actionCards.map((card, index) => (
+                  <Card key={index} {...card} />
+                ))}
               </div>
 
               {/* Summary Section */}
               <div className="mt-12">
-                <h2
-                  className={`text-2xl font-semibold mb-6 ${
-                    darkMode ? "text-gray-100" : "text-gray-900"
-                  }`}
-                >
-                  Business Summary
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                  {formattedSummaryData.map((item, index) => (
-                    <SummaryCard
-                      key={index}
-                      title={item.title}
-                      value={item.value}
-                      icon={item.icon}
-                      onClick={item.onClick}
-                      color={item.color}
-                      darkMode={darkMode}
-                    />
+                <h2 className="text-xl sm:text-2xl font-semibold mb-6">Business Summary</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                  {summaryCards.map((card, index) => (
+                    <SummaryCard key={index} {...card} darkMode={darkMode} />
                   ))}
                 </div>
                 <div
                   ref={chartContainerRef}
-                  className={`rounded-2xl shadow-md p-6 border hover:scale-[1.02] transition-transform duration-300 animate-fade-in ${
-                    darkMode
-                      ? "bg-gray-800 border-gray-600"
-                      : "bg-white border-gray-200"
-                  } flex flex-col items-center`}
+                  className={`rounded-2xl shadow-md p-4 sm:p-6 border hover:scale-[1.02] transition-transform ${darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"} flex flex-col items-center`}
                 >
                   <div className="flex justify-between items-center w-full mb-4">
-                    <h3
-                      className={`text-lg font-semibold ${
-                        darkMode ? "text-gray-100" : "text-gray-900"
-                      }`}
-                    >
-                      Revenue Trend
-                    </h3>
+                    <h3 className="text-base sm:text-lg font-semibold">Revenue Trend</h3>
                     <button
                       onClick={handleExport}
-                      className={`px-3 py-1 rounded-lg hover:scale-105 transition-colors ${
-                        darkMode
-                          ? "bg-[#b8966f] text-white hover:bg-[#a7845f]"
-                          : "bg-[#b8966f] text-white hover:bg-[#a7845f]"
-                      }`}
+                      className="px-3 py-1 rounded-lg hover:scale-105 transition-colors bg-[#b8966f] text-white hover:bg-[#a7845f]"
                     >
                       Export PNG
                     </button>
@@ -423,18 +275,16 @@ const Home = ({ darkMode, toggleDarkMode }) => {
                         width={chartDimensions.width}
                         height={chartDimensions.height}
                         data={revenueData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                        isAnimationActive={true}
-                        animationDuration={600}
+                        margin={{ top: 20, right: 20, left: 10, bottom: 20 }}
                       >
                         <XAxis
                           dataKey="month"
                           stroke={darkMode ? "#E5E7EB" : "#1F2937"}
-                          tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937" }}
+                          tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: window.innerWidth < 640 ? 10 : 12 }}
                         />
                         <YAxis
                           stroke={darkMode ? "#E5E7EB" : "#1F2937"}
-                          tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937" }}
+                          tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: window.innerWidth < 640 ? 10 : 12 }}
                           tickFormatter={(value) => `₹${value.toLocaleString("en-IN")}`}
                         />
                         <Tooltip
@@ -447,29 +297,11 @@ const Home = ({ darkMode, toggleDarkMode }) => {
                           }}
                           formatter={(value) => `₹${value.toLocaleString("en-IN")}`}
                         />
-                        <Legend
-                          wrapperStyle={{
-                            color: darkMode ? "#E5E7EB" : "#1F2937",
-                            paddingTop: "10px",
-                          }}
-                        />
-                        <Line
-                          type="monotone"
-                          dataKey="revenue"
-                          stroke="#3B82F6"
-                          name="Revenue"
-                          strokeWidth={2}
-                          dot={false}
-                        />
+                        <Legend wrapperStyle={{ color: darkMode ? "#E5E7EB" : "#1F2937", paddingTop: "10px" }} />
+                        <Line type="monotone" dataKey="revenue" stroke="#3B82F6" name="Revenue" strokeWidth={2} dot={false} />
                       </LineChart>
                     ) : (
-                      <p
-                        className={`${
-                          darkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      >
-                        No revenue data available
-                      </p>
+                      <p className={darkMode ? "text-gray-400" : "text-gray-500"}>No revenue data available</p>
                     )}
                   </div>
                 </div>
@@ -477,15 +309,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
             </>
           )}
         </div>
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-            darkMode={darkMode}
-            autoClose={toast.autoClose}
-          />
-        )}
+        {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} darkMode={darkMode} autoClose={toast.autoClose} />}
       </div>
     </ErrorBoundary>
   );
@@ -495,10 +319,10 @@ const Home = ({ darkMode, toggleDarkMode }) => {
 const Card = ({ icon, title, onClick, color }) => (
   <div
     onClick={onClick}
-    className={`cursor-pointer rounded-xl p-6 shadow-md bg-gradient-to-br ${color} text-white hover:scale-[1.03] transition-transform duration-300 animate-fade-in`}
+    className={`cursor-pointer rounded-xl p-3 sm:p-4 md:p-6 shadow-md bg-gradient-to-br ${color} text-white hover:scale-[1.03] transition-transform`}
   >
-    <div className="mb-2">{icon}</div>
-    <h3 className="text-xl font-semibold">{title}</h3>
+    <div className="mb-1 sm:mb-2">{React.cloneElement(icon, { className: "w-5 h-5 sm:w-6 sm:h-6" })}</div>
+    <h3 className="text-base sm:text-lg md:text-xl font-semibold">{title}</h3>
   </div>
 );
 
@@ -506,30 +330,12 @@ const Card = ({ icon, title, onClick, color }) => (
 const SummaryCard = ({ title, value, icon, onClick, color, darkMode }) => (
   <div
     onClick={onClick}
-    className={`cursor-pointer rounded-xl p-6 shadow-md border hover:scale-[1.03] transition-transform duration-300 animate-fade-in flex items-center ${
-      darkMode
-        ? "bg-gray-800 border-gray-600"
-        : "bg-white border-gray-200"
-    }`}
+    className={`cursor-pointer rounded-xl p-4 sm:p-6 shadow-md border hover:scale-[1.03] transition-transform flex items-center ${darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"}`}
   >
-    <div className={`p-3 rounded-full bg-gradient-to-br ${color} text-white mr-4`}>
-      {icon}
-    </div>
+    <div className={`p-3 rounded-full bg-gradient-to-br ${color} text-white mr-4`}>{icon}</div>
     <div>
-      <h3
-        className={`text-lg font-semibold ${
-          darkMode ? "text-gray-100" : "text-gray-900"
-        }`}
-      >
-        {title}
-      </h3>
-      <p
-        className={`text-2xl font-bold ${
-          darkMode ? "text-gray-100" : "text-gray-900"
-        }`}
-      >
-        {value}
-      </p>
+      <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{title}</h3>
+      <p className={`text-xl sm:text-2xl font-bold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{value}</p>
     </div>
   </div>
 );

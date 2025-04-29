@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import Toast from "../../components/common/Toast";
 
+// EditExpenseModal component for editing or deleting expenses
 const EditExpenseModal = ({
   isOpen,
   onClose,
@@ -17,9 +18,7 @@ const EditExpenseModal = ({
   // Handle escape key and focus trapping
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape") {
-        onClose();
-      }
+      if (e.key === "Escape") onClose();
     };
 
     const handleFocusTrap = (e) => {
@@ -54,9 +53,7 @@ const EditExpenseModal = ({
 
   // Handle click outside to close modal
   const handleOutsideClick = (e) => {
-    if (modalRef.current && !modalRef.current.contains(e.target)) {
-      onClose();
-    }
+    if (modalRef.current && !modalRef.current.contains(e.target)) onClose();
   };
 
   // Handle form submission
@@ -80,11 +77,11 @@ const EditExpenseModal = ({
 
   if (!isOpen || !selectedTransaction) return null;
 
-  // Normalize date format (assuming input like "Sep 01" to "2023-09-01")
+  // Normalize date format (e.g., "Sep 01" to "2023-09-01")
   const normalizeDate = (dateStr) => {
     if (!dateStr) return "";
     const [month, day] = dateStr.split(" ");
-    const year = new Date().getFullYear(); // Assume current year
+    const year = new Date().getFullYear();
     const monthIndex = [
       "Jan",
       "Feb",
@@ -99,18 +96,22 @@ const EditExpenseModal = ({
       "Nov",
       "Dec",
     ].indexOf(month);
-    if (monthIndex === -1) return dateStr; // Return as is if invalid
+    if (monthIndex === -1) return dateStr;
     return `${year}-${(monthIndex + 1).toString().padStart(2, "0")}-${day.padStart(2, "0")}`;
   };
 
+  const inputStyles = `w-full p-2 sm:p-3 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 text-sm sm:text-base`;
+  const lightInput = `bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-600`;
+  const darkInput = `bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500`;
+
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 transition-opacity duration-300"
+      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 transition-opacity duration-300"
       onClick={handleOutsideClick}
     >
       <div
         ref={modalRef}
-        className={`rounded-lg p-6 max-w-md w-full border shadow-md transition-all duration-300 animate-fade-in ${
+        className={`rounded-lg p-4 sm:p-6 max-w-sm sm:max-w-md w-full border shadow-md transition-all duration-300 animate-fade-in ${
           darkMode
             ? "bg-gray-800 border-gray-700 text-gray-100"
             : "bg-white border-gray-200 text-gray-900"
@@ -122,7 +123,7 @@ const EditExpenseModal = ({
       >
         <h2
           id="edit-expense-modal-title"
-          className="text-xl font-semibold mb-4"
+          className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4"
         >
           Edit Expense
         </h2>
@@ -146,11 +147,7 @@ const EditExpenseModal = ({
                   date: e.target.value,
                 })
               }
-              className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
-                darkMode
-                  ? "bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500"
-                  : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-600"
-              }`}
+              className={`${inputStyles} ${darkMode ? darkInput : lightInput}`}
               required
               aria-required="true"
             />
@@ -174,11 +171,7 @@ const EditExpenseModal = ({
                   description: e.target.value,
                 })
               }
-              className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
-                darkMode
-                  ? "bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500"
-                  : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-600"
-              }`}
+              className={`${inputStyles} ${darkMode ? darkInput : lightInput}`}
               required
               aria-required="true"
             />
@@ -201,11 +194,7 @@ const EditExpenseModal = ({
                   category: e.target.value,
                 })
               }
-              className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
-                darkMode
-                  ? "bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500"
-                  : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-600"
-              }`}
+              className={`${inputStyles} ${darkMode ? darkInput : lightInput}`}
               required
               aria-required="true"
             >
@@ -229,18 +218,14 @@ const EditExpenseModal = ({
             <input
               id="amount"
               type="number"
-              value={selectedTransaction.amount.replace(/[^0-9.]/g, "")} // Strip non-numeric characters
+              value={selectedTransaction.amount.replace(/[^0-9.]/g, "")}
               onChange={(e) =>
                 setSelectedTransaction({
                   ...selectedTransaction,
                   amount: e.target.value,
                 })
               }
-              className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
-                darkMode
-                  ? "bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500"
-                  : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-600"
-              }`}
+              className={`${inputStyles} ${darkMode ? darkInput : lightInput}`}
               required
               min="0"
               step="0.01"
@@ -265,11 +250,7 @@ const EditExpenseModal = ({
                   type: e.target.value,
                 })
               }
-              className={`w-full p-2 border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
-                darkMode
-                  ? "bg-gray-700 border-gray-600 text-gray-100 focus:ring-blue-500"
-                  : "bg-gray-50 border-gray-300 text-gray-900 focus:ring-blue-600"
-              }`}
+              className={`${inputStyles} ${darkMode ? darkInput : lightInput}`}
               required
               aria-required="true"
             >
@@ -277,10 +258,10 @@ const EditExpenseModal = ({
               <option value="Professional">Professional</option>
             </select>
           </div>
-          <div className="flex gap-4 mt-6">
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mt-4 sm:mt-6">
             <button
               type="submit"
-              className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
+              className={`w-full py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base ${
                 darkMode
                   ? "bg-blue-500 text-white hover:bg-blue-600"
                   : "bg-blue-600 text-white hover:bg-blue-700"
@@ -292,7 +273,7 @@ const EditExpenseModal = ({
             <button
               type="button"
               onClick={onDelete}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
+              className={`w-full py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base ${
                 darkMode
                   ? "bg-red-500 text-white hover:bg-red-600"
                   : "bg-red-600 text-white hover:bg-red-700"
@@ -304,7 +285,7 @@ const EditExpenseModal = ({
             <button
               type="button"
               onClick={onClose}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
+              className={`w-full py-2 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base ${
                 darkMode
                   ? "bg-gray-700 text-gray-200 hover:bg-gray-600"
                   : "bg-gray-200 text-gray-700 hover:bg-gray-300"
