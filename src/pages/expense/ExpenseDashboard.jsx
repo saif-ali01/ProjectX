@@ -405,18 +405,6 @@ const ExpenseDashboard = ({ darkMode }) => {
         }`}
       >
         <h1 className="text-2xl font-bold tracking-tight">Star Printing - Expense Dashboard</h1>
-        <div className="flex gap-4">
-          <button
-            onClick={() => navigate("/bills")}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
-              darkMode
-                ? "bg-gray-800 text-blue-400 hover:bg-gray-700"
-                : "bg-white text-blue-600 hover:bg-gray-100"
-            }`}
-          >
-            Back to Bills
-          </button>
-        </div>
       </header>
 
       <main className="mt-6">

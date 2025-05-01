@@ -100,15 +100,21 @@ const FinancialSummaryPieChart = ({ financialSummary, darkMode }) => {
         </button>
       </div>
       <div className="overflow-hidden w-full flex justify-center">
-        <PieChart width={chartDimensions.width} height={chartDimensions.height}>
+      <PieChart 
+          width={chartDimensions.width}
+          height={chartDimensions.height}
+          margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+        >
           <Pie
             data={financialSummary.pieData}
             dataKey="value"
             nameKey="name"
             cx="50%"
             cy="50%"
-            outerRadius={Math.min(chartDimensions.width, chartDimensions.height) * 0.3}
-            style={{ cursor: "pointer" }}
+            outerRadius={chartDimensions.width * 0.35}
+            innerRadius={chartDimensions.width * 0.2}
+            paddingAngle={2}
+            cornerRadius={6}
             isAnimationActive={true}
             animationDuration={600}
           >
@@ -120,19 +126,23 @@ const FinancialSummaryPieChart = ({ financialSummary, darkMode }) => {
                     ? COLORS[index % COLORS.length].dark
                     : COLORS[index % COLORS.length].light
                 }
-                style={{ transition: "transform 0.2s", cursor: "pointer" }}
-                onMouseEnter={(e) => (e.target.style.transform = "scale(1.05)")}
-                onMouseLeave={(e) => (e.target.style.transform = "scale(1)")}
+                stroke={darkMode ? "#1F2937" : "#F9FAFB"}
+                strokeWidth={2}
               />
             ))}
           </Pie>
           <Legend
             formatter={(value) => (
-              <span className={darkMode ? "text-gray-200" : "text-gray-900"} style={{ fontSize: '0.85rem' }}>
+              <span className={darkMode ? "text-gray-200" : "text-gray-900"} 
+                style={{ fontSize: '0.85rem' }}>
                 {value}
               </span>
             )}
-            wrapperStyle={{ paddingTop: "10px", fontSize: '0.85rem' }}
+            wrapperStyle={{ 
+              paddingTop: "20px",
+              fontSize: '0.85rem',
+              maxWidth: chartDimensions.width - 60
+            }}
             layout="horizontal"
             align="center"
             verticalAlign="bottom"
@@ -140,24 +150,22 @@ const FinancialSummaryPieChart = ({ financialSummary, darkMode }) => {
           <Tooltip
             contentStyle={{
               backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
-              color: darkMode ? "#E5E7EB" : "#1F2937",
               border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
-              borderRadius: "4px",
-              padding: "8px",
-              fontSize: "0.85rem",
+              borderRadius: "8px",
+              padding: "12px",
+              fontSize: "0.9rem",
+            }}
+            itemStyle={{
+              color: darkMode ? "#FFFFFF" : "#1F2937",
+              fontSize: "0.9rem",
+              padding: "2px 0",
             }}
             formatter={(value) => `₹${value.toLocaleString("en-IN")}`}
           />
         </PieChart>
       </div>
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-          darkMode={darkMode}
-        />
-      )}
+
+      {toast && <Toast {...toast} onClose={() => setToast(null)} darkMode={darkMode} />}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Outlet, NavLink, useLocation } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Outlet, NavLink, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { FiHome, FiDollarSign, FiPieChart, FiFileText, FiSun, FiMoon, FiMenu, FiX } from "react-icons/fi";
 import { useState, useEffect } from "react";
 import BillMaker from "./pages/Bill/BillMaker";
@@ -14,6 +14,63 @@ import Signup from "./pages/auth/Signup";
 import ResetPassword from "./pages/auth/ResetPassword";
 import Settings from "./pages/setting/Settings";
 import Clients from "./pages/client/Clients";
+import NotFound from "./pages/notfound/NotFound";
+import { api } from "./utils/api";
+import Toast from "./components/common/Toast";
+
+// ProtectedRoute component to check authentication
+const ProtectedRoute = ({ children, darkMode }) => {
+  const [isAuthenticated, setIsAuthenticated] = useState(null);
+  const [toast, setToast] = useState(null);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        await api.get("/api/me", { withCredentials: true });
+        setIsAuthenticated(true);
+      } catch (err) {
+        setIsAuthenticated(false);
+        setToast({
+          message: "Please sign in to access this page.",
+          type: "error",
+          autoClose: 5000,
+        });
+      }
+    };
+    checkAuth();
+  }, []);
+
+  if (isAuthenticated === null) {
+    return (
+      <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"} flex items-center justify-center`}>
+        <div className={`p-4 rounded-lg animate-pulse ${darkMode ? "bg-blue-800 text-blue-100" : "bg-blue-100 text-blue-800"}`}>
+          Checking authentication...
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <>
+        <Navigate to="/login" state={{ from: location, toast }} replace />
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+            darkMode={darkMode}
+            autoClose={toast.autoClose}
+          />
+        )}
+      </>
+    );
+  }
+
+  return children;
+};
 
 // Layout component with responsive sidebar, mobile bottom navigation, and dark mode toggle
 const Layout = ({ darkMode, toggleDarkMode }) => {
@@ -173,7 +230,6 @@ const Layout = ({ darkMode, toggleDarkMode }) => {
               <span>{item.name}</span>
             </NavLink>
           ))}
-   
         </nav>
       )}
     </div>
@@ -206,18 +262,89 @@ function App() {
         <Route path="/signup" element={<Signup darkMode={darkMode} />} />
         <Route path="/reset-password" element={<ResetPassword darkMode={darkMode} />} />
 
-        {/* Main routes with sidebar/bottom nav */}
+        {/* Main routes with sidebar/bottom nav and authentication */}
         <Route element={<Layout darkMode={darkMode} toggleDarkMode={toggleDarkMode} />}>
-          <Route path="/" element={<Home darkMode={darkMode} />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/clients" element={<Clients />} />
-          <Route path="/create-bill" element={<BillMaker darkMode={darkMode} />} />
-          <Route path="/bill-section" element={<BillSection darkMode={darkMode} />} />
-          <Route path="/bill-view/:id" element={<ViewBill darkMode={darkMode} />} />
-          <Route path="/invoice" element={<InvoiceBill darkMode={darkMode} />} />
-          <Route path="/charts" element={<ChartPage darkMode={darkMode} />} />
-          <Route path="/expenses" element={<ExpenseDashboard darkMode={darkMode} />} />
-          <Route path="/reports" element={<Reports darkMode={darkMode} />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <Home darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <Settings />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clients"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <Clients />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/create-bill"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <BillMaker darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bill-section"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <BillSection darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/bill-view/:id"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <ViewBill darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/invoice"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <InvoiceBill darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/charts"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <ChartPage darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/expenses"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <ExpenseDashboard darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/reports"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <Reports darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </Router>

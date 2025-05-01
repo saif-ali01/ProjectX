@@ -8,14 +8,17 @@ import {
   Users,
   TrendingUp,
   DollarSign,
-  Moon,
-  Sun,
   CreditCard,
   FilePlus,
   Briefcase,
+  LogOut,
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import Toast from "../components/common/Toast";
+
+// Determine base URL for consistency
+const isProduction = process.env.NODE_ENV === "production";
+const BASE_URL = isProduction ? "https://projectxapi.onrender.com" : "http://localhost:5000";
 
 // Error Boundary Component
 class ErrorBoundary extends Component {
@@ -65,20 +68,63 @@ const Home = ({ darkMode, toggleDarkMode }) => {
   const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [user, setUser] = useState(null);
 
-  // Fetch dashboard data from API
+  // Setup Axios interceptors for JWT refresh
+  useEffect(() => {
+    const interceptor = api.interceptors.response.use(
+      (response) => response,
+      async (error) => {
+        const originalRequest = error.config;
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          originalRequest._retry = true;
+          try {
+            await api.post("/api/refresh-token", {}, { withCredentials: true });
+            return api(originalRequest); // Retry original request
+          } catch (refreshError) {
+            console.error("Refresh token error:", refreshError);
+            setToast({ message: "Session expired. Please sign in again.", type: "error", autoClose: 5000 });
+            navigate("/signup?error=session_expired");
+            return Promise.reject(refreshError);
+          }
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => api.interceptors.response.eject(interceptor);
+  }, [navigate]);
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const response = await api.get("/api/me", { withCredentials: true });
+        setUser(response.data);
+      } catch (err) {
+        console.error("Fetch user error:", err);
+        setToast({ message: "Please sign in to access the dashboard.", type: "error", autoClose: 5000 });
+        navigate("/signup?error=unauthenticated");
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUser();
+  }, [navigate]);
+
+  // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
+      if (!user) return;
       try {
         setLoading(true);
         setError(null);
-        const userId = localStorage.getItem("userId");
-        const baseUrl = userId ? `/dashboard/summary?userId=${userId}` : "/dashboard/summary";
-        const revenueUrl = userId ? `/dashboard/revenue-trend?userId=${userId}` : "/dashboard/revenue-trend";
+        const baseUrl = `/api/dashboard/summary?userId=${user.id}`;
+        const revenueUrl = `/api/dashboard/revenue-trend?userId=${user.id}`;
 
         const [summaryResponse, revenueResponse] = await Promise.all([
-          api.get(baseUrl),
-          api.get(revenueUrl),
+          api.get(baseUrl, { withCredentials: true }),
+          api.get(revenueUrl, { withCredentials: true }),
         ]);
 
         setSummaryData({
@@ -100,8 +146,10 @@ const Home = ({ darkMode, toggleDarkMode }) => {
       }
     };
 
-    fetchDashboardData();
-  }, []);
+    if (user) {
+      fetchDashboardData();
+    }
+  }, [user]);
 
   // Update chart dimensions responsively
   useEffect(() => {
@@ -146,6 +194,19 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     }
   };
 
+  // Logout handler
+  const handleLogout = async () => {
+    try {
+      await api.post("/api/logout", {}, { withCredentials: true });
+      setUser(null);
+      setToast({ message: "Logged out successfully", type: "success", autoClose: 3000 });
+      navigate("/signup");
+    } catch (err) {
+      console.error("Logout error:", err);
+      setToast({ message: "Failed to log out", type: "error", autoClose: 3000 });
+    }
+  };
+
   // Summary data configuration
   const summaryCards = [
     {
@@ -187,6 +248,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     { icon: <CreditCard className="w-6 h-6" />, title: "Expenses", onClick: () => navigate("/expenses"), color: "from-red-600 to-rose-700" },
     { icon: <FilePlus className="w-6 h-6" />, title: "Create Bill", onClick: () => navigate("/create-bill"), color: "from-purple-500 to-violet-600" },
     { icon: <Briefcase className="w-6 h-6" />, title: "Add Today's Work", onClick: () => navigate("/add-work"), color: "from-teal-500 to-cyan-600" },
+    { icon: <LogOut className="w-6 h-6" />, title: "Logout", onClick: handleLogout, color: "from-red-500 to-red-700" },
   ];
 
   return (
@@ -217,11 +279,15 @@ const Home = ({ darkMode, toggleDarkMode }) => {
                 onClick={() => {
                   setLoading(true);
                   setError(null);
-                  fetchDashboardData();
+                  if (user) {
+                    fetchDashboardData();
+                  } else {
+                    navigate("/signup?error=unauthenticated");
+                  }
                 }}
                 className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${darkMode ? "bg-gray-700 text-gray-100 hover:bg-gray-600" : "bg-gray-200 text-gray-900 hover:bg-gray-300"}`}
               >
-                Retry
+tei              Retry
               </button>
             </div>
           )}

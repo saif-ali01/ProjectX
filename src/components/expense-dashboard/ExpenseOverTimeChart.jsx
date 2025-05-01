@@ -1,28 +1,10 @@
-import React, { useRef, useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
+import React, { useRef, useState } from "react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 import Toast from "../../components/common/Toast";
 
-// ExpenseOverTimeChart component for visualizing expenses over time
 const ExpenseOverTimeChart = ({ overTime, timeFrame, darkMode }) => {
   const chartContainerRef = useRef(null);
-  const [chartDimensions, setChartDimensions] = useState({ width: 400, height: 300 });
   const [toast, setToast] = useState(null);
-
-  // Dynamically set chart dimensions based on container size
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (chartContainerRef.current) {
-        const { offsetWidth } = chartContainerRef.current;
-        const width = Math.min(offsetWidth, 600); // Cap max width
-        const height = Math.max(width * 0.6, 250); // Maintain aspect ratio
-        setChartDimensions({ width, height });
-      }
-    };
-
-    updateDimensions();
-    window.addEventListener("resize", updateDimensions);
-    return () => window.removeEventListener("resize", updateDimensions);
-  }, []);
 
   // Export chart as PNG
   const handleExport = () => {
@@ -75,71 +57,94 @@ const ExpenseOverTimeChart = ({ overTime, timeFrame, darkMode }) => {
           Export PNG
         </button>
       </div>
-      <div className="relative right-10 w-full">
-        <LineChart
-          width={chartDimensions.width}
-          height={chartDimensions.height}
-          data={overTime}
-          margin={{ top: 20, right: 20, left: 10, bottom: 20 }}
-        >
-          <XAxis
-            dataKey={
-              timeFrame === "daily"
-                ? "date"
-                : timeFrame === "monthly"
-                ? "month"
-                : "year"
-            }
-            stroke={darkMode ? "#E5E7EB" : "#1F2937"}
-            tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.75rem' }}
-            tickFormatter={(value) =>
-              timeFrame === "daily"
-                ? new Date(value).toLocaleDateString("en-IN", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                : value
-            }
-          />
-          <YAxis
-            stroke={darkMode ? "#E5E7EB" : "#1F2937"}
-            tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.75rem' }}
-            tickFormatter={(value) => `₹${value.toLocaleString("en-IN")}`}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
-              color: darkMode ? "#E5E7EB" : "#1F2937",
-              border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
-              borderRadius: "4px",
-              padding: "8px",
-              fontSize: "0.85rem",
-            }}
-            formatter={(value) => `₹${value.toLocaleString("en-IN")}`}
-          />
-          <Legend
-            wrapperStyle={{ color: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.85rem', paddingTop: '10px' }}
-            layout="horizontal"
-            align="center"
-            verticalAlign="bottom"
-          />
-          <Line
-            type="monotone"
-            dataKey="personal"
-            stroke={darkMode ? "#60A5FA" : "#3B82F6"}
-            name="Personal"
-            strokeWidth={2}
-            dot={false}
-          />
-          <Line
-            type="monotone"
-            dataKey="professional"
-            stroke={darkMode ? "#34D399" : "#10B981"}
-            name="Professional"
-            strokeWidth={2}
-            dot={false}
-          />
-        </LineChart>
+      <div className="w-full h-[300px] sm:h-[400px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={overTime}
+            margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+          >
+            <XAxis
+              dataKey={
+                timeFrame === "daily"
+                  ? "date"
+                  : timeFrame === "monthly"
+                  ? "month"
+                  : "year"
+              }
+              stroke={darkMode ? "#E5E7EB" : "#1F2937"}
+              tick={{
+                fill: darkMode ? "#E5E7EB" : "#1F2937",
+                fontSize: "0.75rem",
+              }}
+              tickFormatter={(value) =>
+                timeFrame === "daily"
+                  ? new Date(value).toLocaleDateString("en-IN", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : value
+              }
+            />
+            <YAxis
+              stroke={darkMode ? "#E5E7EB" : "#1F2937"}
+              tick={{
+                fill: darkMode ? "#E5E7EB" : "#1F2937",
+                fontSize: "0.75rem",
+              }}
+              tickFormatter={(value) => `₹${value.toLocaleString("en-IN")}`}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
+                color: darkMode ? "#E5E7EB" : "#1F2937",
+                border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
+                borderRadius: "8px",
+                padding: "12px",
+                fontSize: "0.9rem",
+                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+                zIndex: 1000,
+              }}
+              formatter={(value) => [`₹${value.toLocaleString("en-IN")}`, ""]}
+              itemStyle={{ padding: "4px 0" }}
+            />
+            <Legend
+              wrapperStyle={{
+                color: darkMode ? "#E5E7EB" : "#1F2937",
+                fontSize: "0.85rem",
+                paddingTop: "10px",
+              }}
+              layout="horizontal"
+              align="center"
+              verticalAlign="bottom"
+            />
+            <Line
+              type="monotone"
+              dataKey="personal"
+              stroke={darkMode ? "#60A5FA" : "#3B82F6"}
+              name="Personal"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{
+                r: 6,
+                fill: darkMode ? "#60A5FA" : "#3B82F6",
+                strokeWidth: 2,
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="professional"
+              stroke={darkMode ? "#34D399" : "#10B981"}
+              name="Professional"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{
+                r: 6,
+                fill: darkMode ? "#34D399" : "#10B981",
+                strokeWidth: 2,
+              }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
       {toast && (
         <Toast

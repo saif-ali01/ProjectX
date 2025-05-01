@@ -1,28 +1,10 @@
 import React, { useRef, useEffect, useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from "recharts";
 import Toast from "../../components/common/Toast";
 
-// FinancialSummaryLineChart component for visualizing financial summary over time
 const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) => {
   const chartContainerRef = useRef(null);
-  const [chartDimensions, setChartDimensions] = useState({ width: 400, height: 250 });
   const [toast, setToast] = useState(null);
-
-  // Dynamically set chart dimensions based on container size
-  useEffect(() => {
-    const updateDimensions = () => {
-      if (chartContainerRef.current) {
-        const { offsetWidth } = chartContainerRef.current;
-        const width = Math.min(offsetWidth, 600); // Cap max width
-        const height = Math.max(width * 0.6, 250); // Maintain aspect ratio
-        setChartDimensions({ width, height });
-      }
-    };
-
-    updateDimensions();
-    window.addEventListener("resize", updateDimensions);
-    return () => window.removeEventListener("resize", updateDimensions);
-  }, []);
 
   // Export chart as PNG
   const handleExport = () => {
@@ -90,71 +72,72 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
           Export PNG
         </button>
       </div>
-      <div className="w-full relative right-5 flex justify-center">
-        <LineChart
-          width={chartDimensions.width}
-          height={chartDimensions.height}
-          data={financialSummary.timeSeries}
-          margin={{ top: 20, right: 20, left: 10, bottom: 20 }}
-          isAnimationActive={true}
-          animationDuration={600}
-        >
-          <CartesianGrid
-            stroke={darkMode ? "#374151" : "#E5E7EB"}
-            strokeDasharray="3 3"
-          />
-          <XAxis
-            dataKey={
-              timeFrame === "daily"
-                ? "date"
-                : timeFrame === "monthly"
-                ? "month"
-                : "year"
-            }
-            stroke={darkMode ? "#E5E7EB" : "#1F2937"}
-            tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.75rem' }}
-            tickFormatter={(value) =>
-              timeFrame === "daily"
-                ? new Date(value).toLocaleDateString("en-IN", {
-                    month: "short",
-                    day: "numeric",
-                  })
-                : value
-            }
-          />
-          <YAxis
-            stroke={darkMode ? "#E5E7EB" : "#1F2937"}
-            tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.75rem' }}
-            tickFormatter={(value) => `₹${value.toLocaleString("en-IN")}`}
-          />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
-              color: darkMode ? "#E5E7EB" : "#1F2937",
-              border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
-              borderRadius: "4px",
-              padding: "8px",
-              fontSize: "0.85rem",
-            }}
-            formatter={(value) => `₹${value.toLocaleString("en-IN")}`}
-          />
-          <Legend
-            wrapperStyle={{
-              color: darkMode ? "#E5E7EB" : "#1F2937",
-              paddingTop: "10px",
-              fontSize: '0.85rem',
-            }}
-            layout="horizontal"
-            align="center"
-            verticalAlign="bottom"
-          />
-          <Line
+      <div className="w-full h-[300px] sm:h-[400px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart
+            data={financialSummary.timeSeries}
+            margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+          >
+            <CartesianGrid
+              stroke={darkMode ? "#374151" : "#E5E7EB"}
+              strokeDasharray="3 3"
+            />
+            <XAxis
+              dataKey={
+                timeFrame === "daily"
+                  ? "date"
+                  : timeFrame === "monthly"
+                  ? "month"
+                  : "year"
+              }
+              stroke={darkMode ? "#E5E7EB" : "#1F2937"}
+              tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.75rem' }}
+              tickFormatter={(value) =>
+                timeFrame === "daily"
+                  ? new Date(value).toLocaleDateString("en-IN", {
+                      month: "short",
+                      day: "numeric",
+                    })
+                  : value
+              }
+            />
+            <YAxis
+              stroke={darkMode ? "#E5E7EB" : "#1F2937"}
+              tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.75rem' }}
+              tickFormatter={(value) => `₹${value.toLocaleString("en-IN")}`}
+            />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
+                color: darkMode ? "#E5E7EB" : "#1F2937",
+                border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
+                borderRadius: "8px",
+                padding: "12px",
+                fontSize: "0.9rem",
+                boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
+              }}
+              formatter={(value) => [`₹${value.toLocaleString("en-IN")}`, ""]}
+              itemStyle={{ padding: "4px 0" }}
+              wrapperStyle={{ zIndex: 1000 }}
+            />
+            <Legend
+              wrapperStyle={{
+                color: darkMode ? "#E5E7EB" : "#1F2937",
+                paddingTop: "10px",
+                fontSize: '0.85rem',
+              }}
+              layout="horizontal"
+              align="center"
+              verticalAlign="bottom"
+            />
+             <Line
             type="monotone"
             dataKey="expenses"
             stroke={darkMode ? "#F87171" : "#EF4444"}
             name="Expenses"
             strokeWidth={2}
-            dot={false}
+            dot={false} // Changed from dot={{...}} to false
+            activeDot={{ r: 6 }}
           />
           <Line
             type="monotone"
@@ -162,7 +145,8 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
             stroke={darkMode ? "#34D399" : "#10B981"}
             name="Earnings"
             strokeWidth={2}
-            dot={false}
+            dot={false} // Changed from dot={{...}} to false
+            activeDot={{ r: 6 }}
           />
           <Line
             type="monotone"
@@ -170,9 +154,11 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
             stroke={darkMode ? "#60A5FA" : "#3B82F6"}
             name="Profit/Loss"
             strokeWidth={2}
-            dot={false}
+            dot={false} // Changed from dot={{...}} to false
+            activeDot={{ r: 6 }}
           />
-        </LineChart>
+          </LineChart>
+        </ResponsiveContainer>
       </div>
       {toast && (
         <Toast

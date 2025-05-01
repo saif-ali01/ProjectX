@@ -146,16 +146,20 @@ const ExpenseByCategoryChart = ({ categories, darkMode, onPieClick }) => {
             verticalAlign="bottom"
           />
           <Tooltip
-            contentStyle={{
-              backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
-              color: darkMode ? "#E5E7EB" : "#1F2937",
-              border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
-              borderRadius: "4px",
-              padding: "8px",
-              fontSize: "0.85rem",
-            }}
-            formatter={(value) => `₹${value.toLocaleString("en-IN")}`}
-          />
+                     contentStyle={{
+                       backgroundColor: darkMode ? "#1F2937" : "#F9FAFB",
+                       border: `1px solid ${darkMode ? "#4B5563" : "#9CA3AF"}`,
+                       borderRadius: "8px",
+                       padding: "12px",
+                       fontSize: "0.9rem",
+                     }}
+                     itemStyle={{
+                       color: darkMode ? "#FFFFFF" : "#1F2937",
+                       fontSize: "0.9rem",
+                       padding: "2px 0",
+                     }}
+                     formatter={(value) => `₹${value.toLocaleString("en-IN")}`}
+                   />
         </PieChart>
       </div>
       {toast && (

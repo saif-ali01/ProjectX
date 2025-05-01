@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
+import PropTypes from "prop-types";
 import { api } from "../../utils/api";
+import Toast from "../../components/common/Toast";
 
 // Sort options for bill filtering
 const sortOptions = [
@@ -28,7 +30,7 @@ const BillList = ({ darkMode }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [toast, setToast] = useState(null);
   const billsPerPage = 10;
   const navigate = useNavigate();
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -38,28 +40,42 @@ const BillList = ({ darkMode }) => {
     const fetchBills = async () => {
       try {
         setLoading(true);
-        setError("");
-        const response = await api.get("/bills", {
+        setToast(null);
+        const response = await api.get("/api/bills", {
           params: {
             page: currentPage,
             limit: billsPerPage,
             sortBy,
             search: debouncedSearchTerm,
           },
+          withCredentials: true,
         });
         const { bills = [], totalPages = 1 } = response.data || {};
         setBills(Array.isArray(bills) ? bills : []);
         setTotalPages(Number.isFinite(totalPages) ? totalPages : 1);
       } catch (err) {
-        const errorMessage = err.response?.data?.message || "Failed to fetch bills. Please try again.";
-        setError(errorMessage);
-        console.error("Error fetching bills:", err);
+        if (err.response?.status === 401) {
+          setToast({
+            message: "Please sign in to view bills.",
+            type: "error",
+            autoClose: 5000,
+          });
+          navigate("/signup?error=unauthenticated");
+        } else {
+          const errorMessage = err.response?.data?.message || "Failed to fetch bills. Please try again.";
+          setToast({
+            message: errorMessage,
+            type: "error",
+            autoClose: 5000,
+          });
+          console.error("Error fetching bills:", err);
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchBills();
-  }, [sortBy, debouncedSearchTerm, currentPage]);
+  }, [sortBy, debouncedSearchTerm, currentPage, navigate]);
 
   // Format status badge colors
   const getStatusColor = (status) => {
@@ -88,7 +104,11 @@ const BillList = ({ darkMode }) => {
   // Export bills to CSV
   const exportToCSV = useCallback(() => {
     if (!bills.length) {
-      setError("No bills to export.");
+      setToast({
+        message: "No bills to export.",
+        type: "error",
+        autoClose: 3000,
+      });
       return;
     }
     const csvContent = [
@@ -111,19 +131,27 @@ const BillList = ({ darkMode }) => {
     link.href = URL.createObjectURL(blob);
     link.download = "bills_export.csv";
     link.click();
+    setToast({
+      message: "Bills exported successfully.",
+      type: "success",
+      autoClose: 3000,
+    });
   }, [bills]);
 
   // Navigate to bill view
-  const handleBillClick = useCallback((billId) => {
-    if (billId) {
-      navigate(`/bill-view/${billId}`);
-    }
-  }, [navigate]);
+  const handleBillClick = useCallback(
+    (billId) => {
+      if (billId) {
+        navigate(`/bill-view/${billId}`);
+      }
+    },
+    [navigate]
+  );
 
   // Retry fetching bills on error
   const handleRetry = useCallback(() => {
     setCurrentPage(1);
-    setError("");
+    setToast(null);
     setSortBy("newest");
     setSearchTerm("");
   }, []);
@@ -133,7 +161,11 @@ const BillList = ({ darkMode }) => {
       <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8">
-          <h1 className={`text-xl sm:text-2xl lg:text-3xl font-bold ${darkMode ? "text-gray-100" : "text-gray-900"} mb-4 sm:mb-0`}>
+          <h1
+            className={`text-xl sm:text-2xl lg:text-3xl font-bold ${
+              darkMode ? "text-gray-100" : "text-gray-900"
+            } mb-4 sm:mb-0`}
+          >
             Bill Management
           </h1>
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center w-full sm:w-auto">
@@ -177,27 +209,21 @@ const BillList = ({ darkMode }) => {
 
         {/* Loading State */}
         {loading && (
-          <div className={`mb-6 p-4 rounded-lg animate-pulse ${darkMode ? "bg-blue-800 text-blue-100" : "bg-blue-100 text-blue-800"}`}>
+          <div
+            className={`mb-6 p-4 rounded-lg animate-pulse ${
+              darkMode ? "bg-blue-800 text-blue-100" : "bg-blue-100 text-blue-800"
+            }`}
+          >
             Loading bills...
           </div>
         )}
 
-        {/* Error State */}
-        {error && (
-          <div className={`mb-6 p-4 rounded-lg ${darkMode ? "bg-red-800 text-red-100" : "bg-red-100 text-red-800"}`}>
-            {error}
-            <button
-              onClick={handleRetry}
-              className={`ml-4 px-3 sm:px-4 py-1 sm:py-2 text-sm sm:text-base bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-colors hover:scale-105`}
-              aria-label="Retry fetching bills"
-            >
-              Retry
-            </button>
-          </div>
-        )}
-
         {/* Bills Table */}
-        <div className={`overflow-x-auto rounded-lg shadow-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}>
+        <div
+          className={`overflow-x-auto rounded-lg shadow-lg border ${
+            darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+          }`}
+        >
           <table className="min-w-full text-xs sm:text-sm">
             <thead>
               <tr className={`bg-gradient-to-r from-blue-500 to-indigo-600 text-white`}>
@@ -230,13 +256,21 @@ const BillList = ({ darkMode }) => {
                   </td>
                   <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">₹{(parseFloat(bill.total) || 0).toFixed(2)}</td>
                   <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-                    <span className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(bill.status)}`}>
+                    <span
+                      className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-medium ${getStatusColor(
+                        bill.status
+                      )}`}
+                    >
                       {(bill.status || "pending").charAt(0).toUpperCase() + (bill.status || "pending").slice(1)}
                     </span>
                   </td>
                   <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">₹{(parseFloat(bill.advance) || 0).toFixed(2)}</td>
                   <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
-                    <span className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-medium ${getBalanceColor(bill.balance)}`}>
+                    <span
+                      className={`inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-xs sm:text-sm font-medium ${getBalanceColor(
+                        bill.balance
+                      )}`}
+                    >
                       ₹{(parseFloat(bill.balance) || 0).toFixed(2)}
                     </span>
                   </td>
@@ -275,9 +309,28 @@ const BillList = ({ darkMode }) => {
             </button>
           </div>
         )}
+
+        {/* Toast Notifications */}
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+            darkMode={darkMode}
+            autoClose={toast.autoClose}
+          />
+        )}
       </div>
     </div>
   );
+};
+
+BillList.propTypes = {
+  darkMode: PropTypes.bool,
+};
+
+BillList.defaultProps = {
+  darkMode: false,
 };
 
 export default BillList;
