@@ -84,9 +84,9 @@ const Signup = ({ darkMode }) => {
     // Redirect to backend Google OAuth endpoint
     const backendUrl = `${
       process.env.NODE_ENV === "production"
-        ? "https://projectxapi.onrender.com"
-        : "http://localhost:5000"
-    }/auth/google`;
+        ? "https://projectxapi.onrender.com/auth/google"
+        : "http://localhost:5000/auth/google"
+    }`;
     window.location.href = backendUrl;
   };
 
