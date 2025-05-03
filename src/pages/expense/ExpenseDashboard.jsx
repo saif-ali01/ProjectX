@@ -63,13 +63,13 @@ const ExpenseDashboard = ({ darkMode }) => {
         setError("");
 
         const [transactionsRes, earningsRes, categoriesRes] = await Promise.all([
-          api.get("/expenses/transactions", {
+          api.get("/api/expenses/transactions", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
           }),
-          api.get("/expenses/earnings", {
+          api.get("/api/expenses/earnings", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
           }),
-          api.get("/expenses/categories", {
+          api.get("/api/expenses/categories", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
           }),
         ]);
@@ -233,7 +233,7 @@ const ExpenseDashboard = ({ darkMode }) => {
         date: date.toISOString(),
         type: formData.type,
       };
-      const response = await api.post("/expenses", newTx);
+      const response = await api.post("/api/expenses", newTx);
       setAllTransactions((prev) => [...prev, response.data]);
       setAddModalOpen(false);
       setCurrentPage(1);
@@ -264,7 +264,7 @@ const ExpenseDashboard = ({ darkMode }) => {
         amount: amount,
         type: selectedTransaction.type,
       };
-      const response = await api.put(`/expenses/${selectedTransaction.id}`, updatedTx);
+      const response = await api.put(`/api/expenses/${selectedTransaction.id}`, updatedTx);
       setAllTransactions((prev) =>
         prev.map((tx) => (tx.id === selectedTransaction.id ? response.data : tx))
       );
@@ -280,7 +280,7 @@ const ExpenseDashboard = ({ darkMode }) => {
 
   const handleDeleteExpense = async () => {
     try {
-      await api.delete(`/expenses/${selectedTransaction.id}`);
+      await api.delete(`/api/expenses/${selectedTransaction.id}`);
       setDeletedTransaction(selectedTransaction);
       setAllTransactions((prev) =>
         prev.filter((tx) => tx.id !== selectedTransaction.id)
@@ -300,7 +300,7 @@ const ExpenseDashboard = ({ darkMode }) => {
   const handleUndoDelete = async () => {
     try {
       if (deletedTransaction) {
-        const response = await api.post("/expenses", deletedTransaction);
+        const response = await api.post("/api/expenses", deletedTransaction);
         setAllTransactions((prev) => [...prev, response.data]);
         setDeletedTransaction(null);
         setShowUndo(false);

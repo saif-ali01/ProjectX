@@ -40,7 +40,7 @@ const ChartPage = ({ darkMode, toggleDarkMode }) => {
       try {
         setLoading(true);
         setError("");
-        const response = await api.get(`/bills/stats?timeFrame=${timeFrame}`);
+        const response = await api.get(`/api/bills/stats?timeFrame=${timeFrame}`);
         let stats = response.data || [
           { date: "2025-04-01", totalRevenue: 1000 },
           { date: "2025-04-02", totalRevenue: 1200 },

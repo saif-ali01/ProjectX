@@ -49,7 +49,7 @@ function BillMaker({ darkMode }) {
   const fetchBillBySerial = async () => {
     if (!serialNumber.trim()) return alert("Please enter a serial number");
     try {
-      const { data } = await api.get(`/bills/serial/${serialNumber}`);
+      const { data } = await api.get(`/api/bills/serial/${serialNumber}`);
       setPartyName(data.partyName);
       setRows(data.rows.map(row => ({ ...row, quantity: row.quantity.toString(), rate: row.rate.toString() })));
       setBillId(data._id);
@@ -65,7 +65,7 @@ function BillMaker({ darkMode }) {
   const fetchPartyBalance = async () => {
     if (!partyName.trim()) return alert("Please enter a party name");
     try {
-      const { data } = await api.get(`/bills/party/${encodeURIComponent(partyName)}`);
+      const { data } = await api.get(`/api/bills/party/${encodeURIComponent(partyName)}`);
       data.matchedPartyNames.length > 0 && setPartyName(data.matchedPartyNames[0]);
       setBalance(data.balance);
     } catch (error) {
@@ -163,7 +163,7 @@ function BillMaker({ darkMode }) {
       includeBalance
     };
     try {
-      const { data } = billId ? await api.put(`/bills/id/${billId}`, billData) : await api.post("/bills", billData);
+      const { data } = billId ? await api.put(`/api/bills/id/${billId}`, billData) : await api.post("/bills", billData);
       setBillId(data._id);
       setSerialNumber(data.serialNumber.toString());
       setBalance(data.balance);

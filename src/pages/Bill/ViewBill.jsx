@@ -34,7 +34,7 @@ const ViewBill = ({ darkMode }) => {
       try {
         setLoading(true);
         setError("");
-        const response = await api.get(`/bills/id/${id}`);
+        const response = await api.get(`/api/bills/id/${id}`);
         if (!response.data) throw new Error("Empty response from server");
 
         const billData = response.data;
