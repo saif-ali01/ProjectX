@@ -81,16 +81,10 @@ const Signup = ({ darkMode }) => {
   const handleGoogleSignup = () => {
     setToast(null);
     setLoading(true);
-    // Redirect to backend Google OAuth endpoint
-    const backendUrl = `${
-      process.env.NODE_ENV === "production"
-        ? "https://projectxapi.onrender.com/auth/google"
-        : "http://localhost:5000/auth/google"
-    }`;
+    const backendUrl = "https://projectxapi.onrender.com/auth/google";
     console.log("Redirecting to Google OAuth:", backendUrl);
     window.location.href = backendUrl;
   };
-
   return (
     <div
       className={`max-w-md mx-auto mt-10 p-6 border rounded-lg shadow-md ${
