@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from "recharts";
 import Toast from "../../components/common/Toast";
 
@@ -6,32 +6,59 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
   const chartContainerRef = useRef(null);
   const [toast, setToast] = useState(null);
 
-  // Export chart as PNG
   const handleExport = () => {
-    const svg = chartContainerRef.current.querySelector(".recharts-surface");
-    if (!svg) {
-      setToast({ message: "Chart not found for export", type: "error" });
-      return;
+    try {
+      const chartContainer = chartContainerRef.current;
+      if (!chartContainer) {
+        setToast({ message: "Chart container not found", type: "error" });
+        return;
+      }
+
+      const svg = chartContainer.querySelector(".recharts-surface");
+      if (!svg) {
+        setToast({ message: "Chart SVG not found for export", type: "error" });
+        return;
+      }
+
+      const clonedSvg = svg.cloneNode(true);
+      clonedSvg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+      const svgData = new XMLSerializer().serializeToString(clonedSvg);
+
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      const img = new Image();
+
+      img.onload = () => {
+        try {
+          canvas.width = img.width * 2;
+          canvas.height = img.height * 2;
+          ctx.scale(2, 2);
+          ctx.drawImage(img, 0, 0);
+
+          const link = document.createElement("a");
+          link.href = canvas.toDataURL("image/png");
+          link.download = "financial_summary_line.png";
+          link.click();
+
+          setToast({ message: "Chart exported successfully", type: "success" });
+        } catch (err) {
+          console.error("Error rendering canvas:", err);
+          setToast({ message: "Failed to export chart", type: "error" });
+        }
+      };
+
+      img.onerror = () => {
+        setToast({ message: "Failed to load SVG for export", type: "error" });
+      };
+
+      const encodedSvg = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgData)}`;
+      img.src = encodedSvg;
+    } catch (err) {
+      console.error("Export error:", err);
+      setToast({ message: "An error occurred while exporting the chart", type: "error" });
     }
-    const svgData = new XMLSerializer().serializeToString(svg);
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width * 2;
-      canvas.height = img.height * 2;
-      ctx.scale(2, 2);
-      ctx.drawImage(img, 0, 0);
-      const link = document.createElement("a");
-      link.href = canvas.toDataURL("image/png");
-      link.download = "financial_summary_line.png";
-      link.click();
-      setToast({ message: "Chart exported successfully", type: "success" });
-    };
-    img.src = "data:image/svg+xml;base64," + btoa(svgData);
   };
 
-  // Handle empty data
   if (!financialSummary?.timeSeries || financialSummary.timeSeries.length === 0) {
     return (
       <div
@@ -62,12 +89,13 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
         </h2>
         <button
           onClick={handleExport}
+          disabled={!financialSummary?.timeSeries?.length}
           aria-label="Export chart as PNG"
           className={`px-3 py-1 rounded-lg font-medium transition-transform hover:scale-105 text-sm sm:text-base mt-2 sm:mt-0 ${
             darkMode
               ? "bg-blue-500 text-white hover:bg-blue-600"
               : "bg-blue-600 text-white hover:bg-blue-700"
-          }`}
+          } ${!financialSummary?.timeSeries?.length ? "opacity-50 cursor-not-allowed" : ""}`}
         >
           Export PNG
         </button>
@@ -91,7 +119,7 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
                   : "year"
               }
               stroke={darkMode ? "#E5E7EB" : "#1F2937"}
-              tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.75rem' }}
+              tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: "0.75rem" }}
               tickFormatter={(value) =>
                 timeFrame === "daily"
                   ? new Date(value).toLocaleDateString("en-IN", {
@@ -103,7 +131,7 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
             />
             <YAxis
               stroke={darkMode ? "#E5E7EB" : "#1F2937"}
-              tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: '0.75rem' }}
+              tick={{ fill: darkMode ? "#E5E7EB" : "#1F2937", fontSize: "0.75rem" }}
               tickFormatter={(value) => `₹${value.toLocaleString("en-IN")}`}
             />
             <Tooltip
@@ -124,39 +152,39 @@ const FinancialSummaryLineChart = ({ financialSummary, timeFrame, darkMode }) =>
               wrapperStyle={{
                 color: darkMode ? "#E5E7EB" : "#1F2937",
                 paddingTop: "10px",
-                fontSize: '0.85rem',
+                fontSize: "0.85rem",
               }}
               layout="horizontal"
               align="center"
               verticalAlign="bottom"
             />
-             <Line
-            type="monotone"
-            dataKey="expenses"
-            stroke={darkMode ? "#F87171" : "#EF4444"}
-            name="Expenses"
-            strokeWidth={2}
-            dot={false} // Changed from dot={{...}} to false
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="earnings"
-            stroke={darkMode ? "#34D399" : "#10B981"}
-            name="Earnings"
-            strokeWidth={2}
-            dot={false} // Changed from dot={{...}} to false
-            activeDot={{ r: 6 }}
-          />
-          <Line
-            type="monotone"
-            dataKey="profitLoss"
-            stroke={darkMode ? "#60A5FA" : "#3B82F6"}
-            name="Profit/Loss"
-            strokeWidth={2}
-            dot={false} // Changed from dot={{...}} to false
-            activeDot={{ r: 6 }}
-          />
+            <Line
+              type="monotone"
+              dataKey="expenses"
+              stroke={darkMode ? "#F87171" : "#EF4444"}
+              name="Expenses"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 6 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="earnings"
+              stroke={darkMode ? "#34D399" : "#10B981"}
+              name="Earnings"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 6 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="profitLoss"
+              stroke={darkMode ? "#60A5FA" : "#3B82F6"}
+              name="Profit/Loss"
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 6 }}
+            />
           </LineChart>
         </ResponsiveContainer>
       </div>
