@@ -119,8 +119,8 @@ const Home = ({ darkMode, toggleDarkMode }) => {
       try {
         setLoading(true);
         setError(null);
-        const baseUrl = `/api/dashboard/summary?userId=${user.id}`;
-        const revenueUrl = `/api/dashboard/revenue-trend?userId=${user.id}`;
+        const baseUrl = `/api/dashboard/summary`;
+        const revenueUrl = `/api/dashboard/revenue-trend`;
 
         const [summaryResponse, revenueResponse] = await Promise.all([
           api.get(baseUrl, { withCredentials: true }),
@@ -128,10 +128,10 @@ const Home = ({ darkMode, toggleDarkMode }) => {
         ]);
 
         setSummaryData({
-          totalRevenue: summaryResponse.data.data.totalRevenue || 0,
-          totalExpenses: summaryResponse.data.data.totalExpenses || 0,
-          pendingInvoices: summaryResponse.data.data.pendingInvoices || 0,
-          activeClients: summaryResponse.data.data.activeClients || 0,
+          totalRevenue: summaryResponse.data.totalRevenue || 0,
+          totalExpenses: summaryResponse.data.totalExpenses || 0,
+          pendingInvoices: summaryResponse.data.pendingInvoices || 0,
+          activeClients: summaryResponse.data.activeClients || 0,
         });
         setRevenueData(revenueResponse.data || []);
       } catch (err) {
