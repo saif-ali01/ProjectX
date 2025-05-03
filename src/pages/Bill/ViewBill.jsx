@@ -246,7 +246,7 @@ const ViewBill = ({ darkMode }) => {
       if (isNaN(updatedBill.total) || updatedBill.total <= 0)
         throw new Error("Total must be positive");
 
-      const response = await api.put(`/bills/id/${id}`, updatedBill);
+      const response = await api.put(`/api/bills/id/${id}`, updatedBill);
       const updatedData = response.data;
 
       setToast({
