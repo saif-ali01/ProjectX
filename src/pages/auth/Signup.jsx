@@ -165,6 +165,7 @@ const Signup = ({ darkMode }) => {
             id="password"
             name="password"
             placeholder="Password"
+            autoComplete="new-password"
             value={form.password}
             onChange={handleChange}
             required
