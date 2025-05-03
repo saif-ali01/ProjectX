@@ -128,10 +128,10 @@ const Home = ({ darkMode, toggleDarkMode }) => {
         ]);
 
         setSummaryData({
-          totalRevenue: summaryResponse.data.totalRevenue || 0,
-          totalExpenses: summaryResponse.data.totalExpenses || 0,
-          pendingInvoices: summaryResponse.data.pendingInvoices || 0,
-          activeClients: summaryResponse.data.activeClients || 0,
+          totalRevenue: summaryResponse.data.data.totalRevenue || 0,
+          totalExpenses: summaryResponse.data.data.totalExpenses || 0,
+          pendingInvoices: summaryResponse.data.data.pendingInvoices || 0,
+          activeClients: summaryResponse.data.data.activeClients || 0,
         });
         setRevenueData(revenueResponse.data || []);
       } catch (err) {
