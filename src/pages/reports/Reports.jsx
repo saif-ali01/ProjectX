@@ -31,7 +31,7 @@ const Reports = ({ darkMode }) => {
       try {
         setIsLoading(true);
         setError("");
-        const response = await api.get("/reports", {
+        const response = await api.get("/api/reports", {
           params: {
             startDate: reportParams.startDate.toISOString(),
             endDate: reportParams.endDate.toISOString(),
