@@ -87,6 +87,7 @@ const Signup = ({ darkMode }) => {
         ? "https://projectxapi.onrender.com/auth/google"
         : "http://localhost:5000/auth/google"
     }`;
+    console.log("Redirecting to Google OAuth:", backendUrl);
     window.location.href = backendUrl;
   };
 
