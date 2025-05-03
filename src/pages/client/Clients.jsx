@@ -1,233 +1,300 @@
-import React, { useState, Component } from "react";
-import { useNavigate } from "react-router-dom";
-import { Users, Search, Plus, Trash2, Moon, Sun } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { Users, Search, Plus, Trash2 } from "lucide-react";
 import Toast from "../../components/common/Toast";
+import { api } from "../../utils/api";
+import { useNavigate } from "react-router-dom";
 
-const Clients = () => {
-  const navigate = useNavigate();
-  const [darkMode, setDarkMode] = useState(false);
+// Error Boundary Class Component
+class ErrorBoundary extends Component {
+  state = { error: null };
+
+  static getDerivedStateFromError(error) {
+    return { error: error.message || "An unexpected error occurred" };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error in Clients:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.error) {
+      const { darkMode } = this.props;
+      return (
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+          <div className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"}`}>
+            <h2 className={`text-lg font-semibold mb-3 ${darkMode ? "text-gray-100" : "text-gray-900"}`}>Error Loading Clients</h2>
+            <p className={`mb-4 ${darkMode ? "text-gray-300" : "text-gray-700"}`}>{this.state.error}</p>
+            <button
+              onClick={() => window.location.href = "/"}
+              className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${darkMode ? "bg-gray-700 text-gray-100 hover:bg-gray-600" : "bg-gray-200 text-gray-900 hover:bg-gray-300"}`}
+            >
+              Go to Home
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const Clients = ({ darkMode }) => {
   const [toast, setToast] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddForm, setShowAddForm] = useState(false);
   const [newClient, setNewClient] = useState({ name: "", email: "", phone: "" });
-  const [clients, setClients] = useState([
-    { id: 1, name: "Alice Smith", email: "alice@example.com", phone: "+91 98765 43210" },
-    { id: 2, name: "Bob Johnson", email: "bob@example.com", phone: "+91 87654 32109" },
-    { id: 3, name: "Charlie Brown", email: "charlie@example.com", phone: "+91 76543 21098" },
-  ]);
+  const [clients, setClients] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  // Fetch clients from API
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setLoading(true);
+        setToast(null);
+        const response = await api.get("/api/clients", {
+          params: { search: searchTerm },
+          withCredentials: true,
+        });
+        const { clients = [] } = response.data.data || {};
+        setClients(Array.isArray(clients) ? clients : []);
+      } catch (err) {
+        if (err.response?.status === 401) {
+          setToast({
+            message: "Please sign in to view clients.",
+            type: "error",
+            autoClose: 5000,
+          });
+          navigate("/signup?error=unauthenticated");
+        } else {
+          const errorMessage = err.response?.data?.message || "Failed to fetch clients. Please try again.";
+          setToast({
+            message: errorMessage,
+            type: "error",
+            autoClose: 5000,
+          });
+          console.error("Error fetching clients:", err);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchClients();
+  }, [searchTerm, navigate]);
 
   const handleSearch = (e) => {
     setSearchTerm(e.target.value);
   };
 
-  const handleAddClient = () => {
+  const handleAddClient = async () => {
     if (!newClient.name || !newClient.email || !newClient.phone) {
-      setToast({ message: "Please fill all fields", type: "error" });
+      setToast({ message: "Please fill all fields", type: "error", autoClose: 3000 });
       return;
     }
-    setClients((prev) => [
-      ...prev,
-      { id: prev.length + 1, ...newClient },
-    ]);
-    setNewClient({ name: "", email: "", phone: "" });
-    setShowAddForm(false);
-    setToast({ message: "Client added successfully", type: "success" });
-    // TODO: Replace with actual API call, e.g., api.post("/api/clients", newClient)
+    try {
+      const response = await api.post("/api/clients", newClient, { withCredentials: true });
+      setClients((prev) => [...prev, response.data.data]);
+      setNewClient({ name: "", email: "", phone: "" });
+      setShowAddForm(false);
+      setToast({ message: "Client added successfully", type: "success", autoClose: 3000 });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || "Failed to add client. Please try again.";
+      setToast({ message: errorMessage, type: "error", autoClose: 3000 });
+      console.error("Error adding client:", err);
+    }
   };
 
-  const handleDeleteClient = (id) => {
-    setClients((prev) => prev.filter((client) => client.id !== id));
-    setToast({ message: "Client deleted successfully", type: "success" });
-    // TODO: Replace with actual API call, e.g., api.delete(`/api/clients/${id}`)
+  const handleDeleteClient = async (id) => {
+    try {
+      await api.delete(`/api/clients/${id}`, { withCredentials: true });
+      setClients((prev) => prev.filter((client) => client.id !== id));
+      setToast({ message: "Client deleted successfully", type: "success", autoClose: 3000 });
+    } catch (err) {
+      const errorMessage = err.response?.data?.message || "Failed to delete client. Please try again.";
+      setToast({ message: errorMessage, type: "error", autoClose: 3000 });
+      console.error("Error deleting client:", err);
+    }
   };
-
-  const filteredClients = clients.filter((client) =>
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    client.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // Error Boundary Class Component
-  class ErrorBoundary extends Component {
-    state = { error: null };
-
-    static getDerivedStateFromError(error) {
-      return { error: error.message || "An unexpected error occurred" };
-    }
-
-    componentDidCatch(error, errorInfo) {
-      console.error("Error in Clients:", error, errorInfo);
-    }
-
-    render() {
-      if (this.state.error) {
-        return (
-          <div className="max-w-7xl mx-auto p-6">
-            <div className="p-6 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-200 rounded-lg shadow-md">
-              <h2 className="text-lg font-semibold mb-3">Error Loading Clients</h2>
-              <p className="mb-4">{this.state.error}</p>
-              <button
-                onClick={() => navigate("/")}
-                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors hover:scale-105"
-              >
-                Go to Home
-              </button>
-            </div>
-          </div>
-        );
-      }
-      return this.props.children;
-    }
-  }
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-100 dark:from-gray-900 dark:to-gray-800 text-gray-900 dark:text-white">
-        <div className="max-w-7xl mx-auto p-6">
+    <ErrorBoundary darkMode={darkMode}>
+      <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"} transition-colors duration-300`}>
+        <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
           {/* Header */}
-          <div className="rounded-2xl shadow-lg p-10 bg-white dark:bg-gray-800 mb-8 animate-fade-in border border-gray-200 dark:border-gray-700">
-            <div className="flex justify-between items-center">
-              <div>
-                <h1 className="text-3xl md:text-4xl font-bold mb-4">Clients</h1>
-                <p className="text-lg text-gray-700 dark:text-gray-300">
-                  Manage your client list and contact details.
-                </p>
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-6 sm:mb-8">
+            <h1
+              className={`text-xl sm:text-2xl lg:text-3xl font-bold ${darkMode ? "text-gray-100" : "text-gray-900"} mb-4 sm:mb-0`}
+            >
+              Client Management
+            </h1>
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-center w-full sm:w-auto">
+              <div className="relative w-full sm:w-56 lg:w-64">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 sm:w-5 h-4 sm:h-5 text-gray-400 dark:text-gray-500" />
+                <input
+                  type="text"
+                  placeholder="Search clients..."
+                  value={searchTerm}
+                  onChange={handleSearch}
+                  className={`w-full pl-9 sm:pl-10 p-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
+                    darkMode
+                      ? "bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-500"
+                      : "bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-600"
+                  }`}
+                  aria-label="Search clients by name or email"
+                />
               </div>
               <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-2 rounded-full bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors hover:scale-105"
-                aria-label="Toggle dark mode"
+                onClick={() => setShowAddForm(true)}
+                className={`w-full sm:w-auto px-4 sm:px-6 py-2 text-sm sm:text-base bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-colors hover:scale-105 shadow-md flex items-center`}
+                aria-label="Add new client"
               >
-                {darkMode ? <Sun className="w-6 h-6" /> : <Moon className="w-6 h-6" />}
+                <Plus className="w-4 sm:w-5 h-4 sm:h-5 mr-1 sm:mr-2" /> Add Client
               </button>
             </div>
           </div>
 
-          {/* Clients Table */}
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border border-gray-200 dark:border-gray-700 animate-fade-in">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-semibold text-gray-900 dark:text-gray-100">
-                Client List
-              </h2>
-              <div className="flex items-center space-x-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search clients..."
-                    value={searchTerm}
-                    onChange={handleSearch}
-                    className="pl-10 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
-                  />
-                </div>
-                <button
-                  onClick={() => setShowAddForm(true)}
-                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors hover:scale-105 flex items-center"
-                >
-                  <Plus className="w-5 h-5 mr-2" /> Add Client
-                </button>
-              </div>
+          {/* Loading State */}
+          {loading && (
+            <div
+              className={`mb-6 p-4 rounded-lg animate-pulse ${
+                darkMode ? "bg-blue-800 text-blue-100" : "bg-blue-100 text-blue-800"
+              }`}
+            >
+              Loading clients...
             </div>
-            {filteredClients.length ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                  <thead>
-                    <tr className="border-b border-gray-200 dark:border-gray-600">
-                      <th className="py-3 px-4 text-gray-900 dark:text-gray-100">Name</th>
-                      <th className="py-3 px-4 text-gray-900 dark:text-gray-100">Email</th>
-                      <th className="py-3 px-4 text-gray-900 dark:text-gray-100">Phone</th>
-                      <th className="py-3 px-4 text-gray-900 dark:text-gray-100">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredClients.map((client) => (
-                      <tr key={client.id} className="border-b border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{client.name}</td>
-                        <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{client.email}</td>
-                        <td className="py-3 px-4 text-gray-900 dark:text-gray-100">{client.phone}</td>
-                        <td className="py-3 px-4">
-                          <button
-                            onClick={() => handleDeleteClient(client.id)}
-                            className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                            aria-label={`Delete ${client.name}`}
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500 dark:text-gray-400">No clients found</p>
-            )}
+          )}
+
+          {/* Clients Table */}
+          <div
+            className={`overflow-x-auto rounded-lg shadow-lg border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"}`}
+          >
+            <table className="min-w-full text-xs sm:text-sm">
+              <thead>
+                <tr className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                  <th className="px-3 sm:px-4 lg:px-6 py-3 text-left font-semibold rounded-tl-lg">Name</th>
+                  <th className="px-3 sm:px-4 lg:px-6 py-3 text-left font-semibold">Email</th>
+                  <th className="px-3 sm:px-4 lg:px-6 py-3 text-left font-semibold">Phone</th>
+                  <th className="px-3 sm:px-4 lg:px-6 py-3 text-left font-semibold rounded-tr-lg">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {clients.map((client, index) => (
+                  <tr
+                    key={client.id}
+                    className={`border-t transition-colors ${darkMode ? "border-gray-700 text-gray-100 hover:bg-gray-700/50" : "border-gray-200 text-gray-900 hover:bg-gray-50"} ${index % 2 === 0 ? "" : darkMode ? "bg-gray-800/50" : "bg-gray-50/50"}`}
+                  >
+                    <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 font-medium">{client.name}</td>
+                    <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-gray-600 dark:text-gray-400">{client.email}</td>
+                    <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-gray-600 dark:text-gray-400">{client.phone}</td>
+                    <td className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteClient(client.id);
+                        }}
+                        className={`text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300`}
+                        aria-label={`Delete ${client.name}`}
+                      >
+                        <Trash2 className="w-4 sm:w-5 h-4 sm:h-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+                {clients.length === 0 && !loading && (
+                  <tr className={`${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    <td colSpan="4" className="px-3 sm:px-4 lg:px-6 py-3 sm:py-4 text-center text-sm sm:text-base">
+                      No clients found
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
 
           {/* Add Client Form */}
           {showAddForm && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 border border-gray-200 dark:border-gray-700 animate-fade-in max-w-lg w-full">
-                <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">
-                  Add New Client
-                </h3>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 sm:p-6 z-50 overflow-y-auto">
+              <div
+                className={`rounded-2xl shadow-md p-4 sm:p-6 border ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} animate-fade-in w-full max-w-md sm:max-w-lg`}
+              >
+                <h3 className="text-lg sm:text-xl font-semibold mb-4 text-gray-900 dark:text-gray-100">Add New Client</h3>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Name
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
                   <input
                     type="text"
                     value={newClient.name}
                     onChange={(e) => setNewClient({ ...newClient, name: e.target.value })}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    className={`w-full p-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
+                      darkMode
+                        ? "bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-500"
+                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-600"
+                    }`}
+                    placeholder="Enter name"
+                    aria-label="Client name"
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
                   <input
                     type="email"
                     value={newClient.email}
                     onChange={(e) => setNewClient({ ...newClient, email: e.target.value })}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    className={`w-full p-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
+                      darkMode
+                        ? "bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-500"
+                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-600"
+                    }`}
+                    placeholder="Enter email"
+                    aria-label="Client email"
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Phone
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
                   <input
                     type="tel"
                     value={newClient.phone}
                     onChange={(e) => setNewClient({ ...newClient, phone: e.target.value })}
-                    className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400"
+                    className={`w-full p-2 text-sm sm:text-base border rounded-lg focus:outline-none focus:ring-2 transition-colors duration-300 ${
+                      darkMode
+                        ? "bg-gray-800 border-gray-600 text-gray-100 placeholder-gray-400 focus:ring-blue-500"
+                        : "bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-blue-600"
+                    }`}
+                    placeholder="Enter phone"
+                    aria-label="Client phone"
                   />
                 </div>
-                <div className="flex justify-end space-x-4">
+                <div className="flex justify-end space-x-3">
                   <button
                     onClick={() => setShowAddForm(false)}
-                    className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors hover:scale-105"
+                    className={`px-4 py-2 text-sm sm:text-base rounded-lg hover:scale-105 transition-colors ${
+                      darkMode ? "bg-gray-700 text-gray-100 hover:bg-gray-600" : "bg-gray-200 text-gray-900 hover:bg-gray-300"
+                    }`}
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleAddClient}
-                    className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors hover:scale-105 flex items-center"
+                    className={`px-4 py-2 text-sm sm:text-base bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-colors hover:scale-105 flex items-center`}
                   >
-                    <Plus className="w-5 h-5 mr-2" /> Add
+                    <Plus className="w-4 sm:w-5 h-4 sm:h-5 mr-1 sm:mr-2" /> Add
                   </button>
                 </div>
               </div>
             </div>
           )}
+
+          {/* Toast Notifications */}
+          {toast && (
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => setToast(null)}
+              darkMode={darkMode}
+              autoClose={toast.autoClose}
+            />
+          )}
         </div>
-        {toast && (
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => setToast(null)}
-          />
-        )}
       </div>
     </ErrorBoundary>
   );

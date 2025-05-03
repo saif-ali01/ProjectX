@@ -288,7 +288,7 @@ function App() {
             path="/clients"
             element={
               <ProtectedRoute darkMode={darkMode}>
-                <Clients />
+              <Clients darkMode={darkMode} />
               </ProtectedRoute>
             }
           />
