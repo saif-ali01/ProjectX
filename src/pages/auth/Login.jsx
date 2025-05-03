@@ -20,11 +20,16 @@ const Login = () => {
     e.preventDefault();
     try {
       setLoading(true);
-      const response = await api.post("/auth/login", formData);
-      // Assume response.data contains token
-      localStorage.setItem("token", response.data.token);
-      setToast({ message: "Login successful", type: "success" });
-      navigate("/expense");
+      // Send credentials with cookies
+      await api.post("/api/login", formData, { withCredentials: true });
+      
+      // Verify authentication status
+      const meResponse = await api.get("/api/me", { withCredentials: true });
+      
+      if (meResponse.data.id) {
+        setToast({ message: "Login successful", type: "success" });
+        navigate("/");
+      }
     } catch (err) {
       setToast({
         message: err.response?.data?.message || "Login failed",

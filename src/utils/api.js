@@ -8,14 +8,29 @@ const api = axios.create({
   },
   withCredentials: true,
 });
+// Add response interceptor
+api.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config;
+    
+    if (error.response.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      try {
+        const refreshResponse = await axios.get('/api/refresh-token', {
+          withCredentials: true
+        });
+        
+        return api(originalRequest);
+      } catch (refreshError) {
+        window.location = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
 
-// Configure axios-retry
-axiosRetry(api, {
-  retries: 3,
-  retryDelay: (retryCount) => retryCount * 1000, // Exponential backoff: 1s, 2s, 3s
-  retryCondition: (error) => {
-    return error.response?.status === 429 || error.response?.status >= 500;
-  },
-});
-
-export { api };
+export default api;

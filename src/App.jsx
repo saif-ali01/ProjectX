@@ -24,23 +24,27 @@ const ProtectedRoute = ({ children, darkMode }) => {
   const [toast, setToast] = useState(null);
   const navigate = useNavigate();
   const location = useLocation();
-
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        await api.get("/api/me", { withCredentials: true });
-        setIsAuthenticated(true);
+        const response = await api.get("/api/me");
+        if (response.data.id) {
+          setIsAuthenticated(true);
+        }
       } catch (err) {
         setIsAuthenticated(false);
+        // Clear invalid cookies
+        await api.post("/api/logout");
         setToast({
-          message: "Please sign in to access this page.",
+          message: "Session expired. Please login again.",
           type: "error",
           autoClose: 5000,
         });
       }
     };
     checkAuth();
-  }, []);
+  }, [location]);
+
 
   if (isAuthenticated === null) {
     return (
