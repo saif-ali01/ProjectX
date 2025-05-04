@@ -177,7 +177,7 @@ function BillMaker({ darkMode }) {
       const date = new Date().toLocaleDateString();
       doc.setFillColor(245, 245, 245);
       doc.rect(0, 0, 210, 30, "F");
-      doc.addImage(logo, "PNG", 80, 5, 20, 20);
+      doc.addImage(logo, "PNG", 70, 5, 20, 20);
       doc.setFontSize(16).setFont("helvetica", "bold").text("Star Printing", 105, 15, null, "center");
       doc.setFontSize(10).setTextColor(100).text("1F-51, Faridabad", 105, 21, null, "center");
       doc.setFontSize(8).text("Specialist in Book binding, Register binding and offset printing", 105, 27, null, "center");
