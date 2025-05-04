@@ -258,7 +258,7 @@ function BillMaker({ darkMode }) {
       includeBalance
     };
     try {
-      const { data } = billId ? await api.put(`/api/bills/id/${billId}`, billData) : await api.post("/bills", billData);
+      const { data } = billId ? await api.put(`/api/bills/id/${billId}`, billData) : await api.post("/api/bills", billData);
       setBillId(data._id);
       setSerialNumber(data.serialNumber.toString());
       setBalance(data.balance);
