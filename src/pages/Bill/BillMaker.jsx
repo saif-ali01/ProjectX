@@ -8,7 +8,7 @@ import { api } from "../../utils/api";
 // BillMaker component for creating, managing, and previewing bills
 function BillMaker({ darkMode }) {
   // State management
-  const [rows, setRows] = useState([{ id: 1, particulars: "", type: "", size: "", customType: "", customSize: "", quantity: "", rate: "", total: 0 }]);
+  const [rows, setRows] = useState([{ id: 1, particulars: "", inputValue: "", type: "", size: "", customType: "", customSize: "", quantity: "", rate: "", total: 0 }]);
   const [partyName, setPartyName] = useState("");
   const [serialNumber, setSerialNumber] = useState("");
   const [billId, setBillId] = useState(null);
@@ -18,11 +18,20 @@ function BillMaker({ darkMode }) {
   const navigate = useNavigate();
   const [focusNewRow, setFocusNewRow] = useState(false);
   const [focusNextRowIndex, setFocusNextRowIndex] = useState(null);
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionIndex, setSuggestionIndex] = useState(-1);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   // Constants
   const typeOptions = ["Book", "Pad", "Tag", "Register", "Other"];
   const sizeOptions = ["1/3", "1/4", "1/5", "1/6", "1/8", "1/10", "1/12", "1/16", "Other"];
   const total = rows.reduce((acc, row) => acc + row.total, 0) + (includeBalance ? balance : 0);
+
+  // Update suggestions based on rows
+  useEffect(() => {
+    const uniqueParticulars = [...new Set(rows.map(row => row.particulars).filter(particular => particular.trim()))];
+    setSuggestions(uniqueParticulars);
+  }, [rows]);
 
   // Auto-focus last input on initial render or row addition
   useEffect(() => {
@@ -45,7 +54,7 @@ function BillMaker({ darkMode }) {
   }, [focusNewRow, focusNextRowIndex]);
 
   // Row operations
-  const addRow = () => setRows([...rows, { id: rows.length + 1, particulars: "", type: "", size: "", customType: "", customSize: "", quantity: "", rate: "", total: 0 }]);
+  const addRow = () => setRows([...rows, { id: rows.length + 1, particulars: "", inputValue: "", type: "", size: "", customType: "", customSize: "", quantity: "", rate: "", total: 0 }]);
 
   const removeRow = () => rows.length > 1 && setRows(prev => prev.slice(0, -1));
 
@@ -60,13 +69,52 @@ function BillMaker({ darkMode }) {
     setRows(newRows);
   };
 
-  // Handle arrow key navigation and Enter key for Particulars
+  // Handle Particulars input change
+  const handleParticularsChange = (index, value) => {
+    updateRow(index, "inputValue", value);
+    updateRow(index, "particulars", value);
+    setShowSuggestions(true);
+    setSuggestionIndex(-1);
+  };
+
+  // Handle suggestion selection
+  const selectSuggestion = (index, suggestion) => {
+    updateRow(index, "particulars", suggestion);
+    updateRow(index, "inputValue", suggestion);
+    setShowSuggestions(false);
+    setSuggestionIndex(-1);
+  };
+
+  // Handle arrow key navigation, Enter key for Particulars, and suggestion navigation
   const handleKeyDown = (e, rowIndex, colIndex) => {
     const fieldsPerRow = 5; // Particulars, Type, Size, Quantity, Rate
     const totalRows = rows.length;
 
-    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-      e.preventDefault(); // Prevent default scrolling behavior
+    if (colIndex === 0 && showSuggestions && filteredSuggestions(rowIndex).length > 0) {
+      // Handle suggestion navigation
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSuggestionIndex(prev => (prev < filteredSuggestions(rowIndex).length - 1 ? prev + 1 : prev));
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSuggestionIndex(prev => (prev > -1 ? prev - 1 : prev));
+      } else if (e.key === "Enter" && suggestionIndex >= 0) {
+        e.preventDefault();
+        selectSuggestion(rowIndex, filteredSuggestions(rowIndex)[suggestionIndex]);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        setShowSuggestions(false);
+        setSuggestionIndex(-1);
+      } else if (e.key === "Enter" && suggestionIndex === -1 && rowIndex === totalRows - 1) {
+        // Enter in Particulars of last row with no suggestion selected
+        e.preventDefault();
+        addRow();
+        setFocusNewRow(true);
+        setShowSuggestions(false);
+      }
+    } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      // Handle table navigation
+      e.preventDefault();
       let newRowIndex = rowIndex;
       let newColIndex = colIndex;
 
@@ -89,11 +137,17 @@ function BillMaker({ darkMode }) {
       const newInputIndex = newRowIndex * fieldsPerRow + newColIndex;
       if (inputRefs.current[newInputIndex]) {
         inputRefs.current[newInputIndex].focus();
+        if (colIndex === 0) {
+          setShowSuggestions(false);
+          setSuggestionIndex(-1);
+        }
       }
     } else if (e.key === "Enter" && colIndex === 0 && rowIndex === totalRows - 1) {
       // Enter in Particulars of last row
+      e.preventDefault();
       addRow();
       setFocusNewRow(true);
+      setShowSuggestions(false);
     }
   };
 
@@ -109,6 +163,12 @@ function BillMaker({ darkMode }) {
     } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
       handleKeyDown(e, rowIndex, colIndex);
     }
+  };
+
+  // Filter suggestions based on input
+  const filteredSuggestions = (rowIndex) => {
+    const inputValue = rows[rowIndex].inputValue.toLowerCase();
+    return suggestions.filter(suggestion => suggestion.toLowerCase().includes(inputValue));
   };
 
   // Sort rows by particulars, total, type, and size
@@ -146,7 +206,7 @@ function BillMaker({ darkMode }) {
     try {
       const { data } = await api.get(`/api/bills/serial/${serialNumber}`);
       setPartyName(data.partyName);
-      setRows(data.rows.map(row => ({ ...row, quantity: row.quantity.toString(), rate: row.rate.toString() })));
+      setRows(data.rows.map(row => ({ ...row, inputValue: row.particulars, quantity: row.quantity.toString(), rate: row.rate.toString() })));
       setBillId(data._id);
       setSerialNumber(data.serialNumber.toString());
       setBalance(data.balance);
@@ -236,12 +296,14 @@ function BillMaker({ darkMode }) {
 
   // Clear form data
   const clearForm = () => {
-    setRows([{ id: 1, particulars: "", type: "", size: "", customType: "", customSize: "", quantity: "", rate: "", total: 0 }]);
+    setRows([{ id: 1, particulars: "", inputValue: "", type: "", size: "", customType: "", customSize: "", quantity: "", rate: "", total: 0 }]);
     setPartyName("");
     setSerialNumber("");
     setBillId(null);
     setBalance(0);
     setIncludeBalance(true);
+    setShowSuggestions(false);
+    setSuggestionIndex(-1);
   };
 
   // Save bill to backend
@@ -284,6 +346,8 @@ function BillMaker({ darkMode }) {
     return `px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-white font-medium transition-all duration-200 transform hover:scale-105 ${colorMap[color]}`;
   };
   const tableStyles = `w-full border-collapse text-sm ${darkMode ? "text-gray-100" : "text-gray-900"}`;
+  const suggestionStyles = `absolute z-10 w-full max-h-40 overflow-y-auto border rounded-lg shadow-lg ${darkMode ? "bg-gray-800 border-gray-600 text-gray-100" : "bg-white border-gray-300 text-gray-900"}`;
+  const suggestionItemStyles = (isHighlighted) => `px-4 py-2 cursor-pointer ${isHighlighted ? (darkMode ? "bg-gray-700" : "bg-gray-200") : ""} ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"}`;
 
   return (
     <div className={containerStyles}>
@@ -341,14 +405,31 @@ function BillMaker({ darkMode }) {
               {rows.map((row, index) => (
                 <tr key={row.id} className={`border-t ${darkMode ? "hover:bg-gray-700" : "hover:bg-gray-50"} transition-colors`}>
                   <td className="border p-2 sm:p-3 text-center">{row.id}</td>
-                  <td className="border p-2 sm:p-3">
+                  <td className="border p-2 sm:p-3 relative">
                     <input
                       ref={(el) => (inputRefs.current[index * 5] = el)}
                       className={inputStyles}
-                      value={row.particulars}
-                      onChange={(e) => updateRow(index, "particulars", e.target.value)}
+                      value={row.inputValue}
+                      onChange={(e) => handleParticularsChange(index, e.target.value)}
                       onKeyDown={(e) => handleKeyDown(e, index, 0)}
+                      onFocus={() => setShowSuggestions(true)}
+                      onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
+                      placeholder="Enter Particulars"
                     />
+                    {showSuggestions && filteredSuggestions(index).length > 0 && (
+                      <ul className={suggestionStyles}>
+                        {filteredSuggestions(index).map((suggestion, idx) => (
+                          <li
+                            key={suggestion}
+                            className={suggestionItemStyles(idx === suggestionIndex)}
+                            onClick={() => selectSuggestion(index, suggestion)}
+                            onMouseEnter={() => setSuggestionIndex(idx)}
+                          >
+                            {suggestion}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </td>
                   {["type", "size"].map((field, colIdx) => (
                     <td key={field} className="border p-2 sm:p-3">
