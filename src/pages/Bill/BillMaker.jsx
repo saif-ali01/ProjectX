@@ -168,47 +168,57 @@ function BillMaker({ darkMode }) {
     }
   };
 
-  // Generate PDF
-  const generatePDF = async () => {
-    const fileName = prompt("Enter bill name:") || "Bill";
-    try {
-      const savedBill = await saveBill();
-      const doc = new jsPDF();
-      const date = new Date().toLocaleDateString();
-      doc.setFillColor(245, 245, 245);
-      doc.rect(0, 0, 210, 30, "F");
-      doc.addImage(logo, "PNG", 70, 5, 20, 20);
-      doc.setFontSize(16).setFont("helvetica", "bold").text("Star Printing", 105, 15, null, "center");
-      doc.setFontSize(10).setTextColor(100).text("1F-51, Faridabad", 105, 21, null, "center");
-      doc.setFontSize(8).text("Specialist in Book binding, Register binding and offset printing", 105, 27, null, "center");
-      doc.setFontSize(10).setTextColor(40).text(`Date: ${date}`, 196, 10, null, "right");
-      doc.text(`Serial No: ${savedBill.serialNumber}`, 196, 15, null, "right");
-      partyName && doc.setFontSize(15).text(`Name: ${partyName}`, 14, 40);
-      const tableData = rows.map(row => [
-        row.id,
-        [row.particulars, row.type === "Other" ? row.customType : row.type, row.size === "Other" ? row.customSize : row.size].filter(Boolean).join(" "),
-        row.quantity,
-        `Rs. ${parseFloat(row.rate || 0).toFixed(2)}`,
-        `Rs. ${row.total.toFixed(2)}`
-      ]);
-      if (balance !== 0 && includeBalance) {
-        tableData.push(["", "Current Total", "", "", `Rs. ${total.toFixed(2)}`], ["", "Balance", "", "", `Rs. ${balance.toFixed(2)}`], ["", "Total", "", "", `Rs. ${total.toFixed(2)}`]);
-      } else {
-        tableData.push(["", "Total", "", "", `Rs. ${total.toFixed(2)}`]);
-      }
-      autoTable(doc, {
-        startY: partyName ? 45 : 35,
-        head: [["#", "Particulars", "Qty", "Rate", "Amount"]],
-        body: tableData,
-        styles: { fontSize: 10, textColor: 40, lineColor: 220, lineWidth: 0.2 },
-        headStyles: { fillColor: 41, textColor: 255, fontStyle: "bold" },
-        columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 75 }, 2: { cellWidth: 20 }, 3: { cellWidth: 25 }, 4: { cellWidth: 35 } }
-      });
-      doc.save(`${fileName}_${partyName}_${new Date().toISOString().slice(0, 10)}.pdf`);
-    } catch (error) {
-      alert(`Failed to generate PDF: ${error.message}`);
+// Generate PDF
+const generatePDF = async () => {
+  const fileName = prompt("Enter bill name:") || "Bill";
+  try {
+    const savedBill = await saveBill();
+    const doc = new jsPDF();
+    const date = new Date().toLocaleDateString();
+    doc.setFillColor(245, 245, 245);
+    doc.rect(0, 0, 210, 30, "F");
+    doc.addImage(logo, "PNG", 70, 5, 20, 20);
+    doc.setFontSize(16).setFont("helvetica", "bold").text("Star Printing", 105, 15, null, "center");
+    doc.setFontSize(10).setTextColor(100).text("1F-51, Faridabad", 105, 21, null, "center");
+    doc.setFontSize(8).text("Specialist in Book binding, Register binding and offset printing", 105, 27, null, "center");
+    doc.setFontSize(10).setTextColor(40).text(`Date: ${date}`, 196, 10, null, "right");
+    doc.text(`Serial No: ${savedBill.serialNumber}`, 196, 15, null, "right");
+    partyName && doc.setFontSize(15).text(`Name: ${partyName}`, 14, 40);
+    const tableData = rows.map(row => [
+      row.id,
+      [row.particulars, row.type === "Other" ? row.customType : row.type, row.size === "Other" ? row.customSize : row.size].filter(Boolean).join(" "),
+      row.quantity,
+      `Rs. ${parseFloat(row.rate || 0).toFixed(2)}`,
+      `Rs. ${row.total.toFixed(2)}`
+    ]);
+    if (balance !== 0 && includeBalance) {
+      tableData.push(
+        ["", "Current Total", "", "", `Rs. ${total.toFixed(2)}`],
+        ["", "Balance", "", "", `Rs. ${balance.toFixed(2)}`],
+        ["", "Total", "", "", `Rs. ${total.toFixed(2)}`]
+      );
+    } else {
+      tableData.push(["", "Total", "", "", `Rs. ${total.toFixed(2)}`]);
     }
-  };
+    autoTable(doc, {
+      startY: partyName ? 45 : 35,
+      head: [["#", "Particulars", "Qty", "Rate", "Amount"]],
+      body: tableData,
+      styles: { fontSize: 10, textColor: 40, lineColor: 220, lineWidth: 0.2 },
+      headStyles: { fillColor: 41, textColor: 255, fontStyle: "bold" },
+      columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 75 }, 2: { cellWidth: 20 }, 3: { cellWidth: 25 }, 4: { cellWidth: 35 } },
+      didParseCell: (data) => {
+        if (data.row.raw[1] === "Total" && (data.column.index === 1 || data.column.index === 4)) {
+          data.cell.styles.fontStyle = "bold";
+        }
+      }
+    });
+    doc.save(`${fileName}_${partyName}_${new Date().toISOString().slice(0, 10)}.pdf`);
+  } catch (error) {
+    alert(`Failed to generate PDF: ${error.message}`);
+  }
+};
+
 
   // Save bill and navigate to InvoiceBill with bill data
   const seeInvoice = async () => {
