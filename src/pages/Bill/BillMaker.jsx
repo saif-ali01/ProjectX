@@ -16,22 +16,37 @@ function BillMaker({ darkMode }) {
   const [includeBalance, setIncludeBalance] = useState(true);
   const inputRefs = useRef([]);
   const navigate = useNavigate();
+  const [focusNewRow, setFocusNewRow] = useState(false);
+  const [focusNextRowIndex, setFocusNextRowIndex] = useState(null);
 
   // Constants
   const typeOptions = ["Book", "Pad", "Tag", "Register", "Other"];
   const sizeOptions = ["1/3", "1/4", "1/5", "1/6", "1/8", "1/10", "1/12", "1/16", "Other"];
   const total = rows.reduce((acc, row) => acc + row.total, 0) + (includeBalance ? balance : 0);
 
-  // Auto-focus last input
+  // Auto-focus last input on initial render or row addition
   useEffect(() => {
-    if (inputRefs.current.length > 0) {
+    if (inputRefs.current.length > 0 && !focusNewRow && focusNextRowIndex === null) {
       const lastInput = inputRefs.current[inputRefs.current.length - 5];
       lastInput?.focus();
     }
-  }, [rows.length]);
+  }, [rows.length, focusNewRow, focusNextRowIndex]);
+
+  // Handle focus for new row or next row after rate input
+  useEffect(() => {
+    if (focusNewRow && inputRefs.current.length > 0) {
+      const newRowParticulars = inputRefs.current[inputRefs.current.length - 5];
+      newRowParticulars?.focus();
+      setFocusNewRow(false);
+    } else if (focusNextRowIndex !== null && inputRefs.current[focusNextRowIndex * 5]) {
+      inputRefs.current[focusNextRowIndex * 5]?.focus();
+      setFocusNextRowIndex(null);
+    }
+  }, [focusNewRow, focusNextRowIndex]);
 
   // Row operations
   const addRow = () => setRows([...rows, { id: rows.length + 1, particulars: "", type: "", size: "", customType: "", customSize: "", quantity: "", rate: "", total: 0 }]);
+
   const removeRow = () => rows.length > 1 && setRows(prev => prev.slice(0, -1));
 
   const updateRow = (index, field, value) => {
@@ -43,6 +58,86 @@ function BillMaker({ darkMode }) {
       newRows[index].total = quantity * rate;
     }
     setRows(newRows);
+  };
+
+  // Handle arrow key navigation and Enter key for Particulars
+  const handleKeyDown = (e, rowIndex, colIndex) => {
+    const fieldsPerRow = 5; // Particulars, Type, Size, Quantity, Rate
+    const totalRows = rows.length;
+
+    if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      e.preventDefault(); // Prevent default scrolling behavior
+      let newRowIndex = rowIndex;
+      let newColIndex = colIndex;
+
+      if (e.key === "ArrowUp" && rowIndex > 0) {
+        newRowIndex = rowIndex - 1;
+      } else if (e.key === "ArrowDown") {
+        if (rowIndex < totalRows - 1) {
+          newRowIndex = rowIndex + 1;
+        } else if (colIndex === 4) { // Rate column in last row
+          addRow();
+          setFocusNewRow(true);
+          return;
+        }
+      } else if (e.key === "ArrowLeft" && colIndex > 0) {
+        newColIndex = colIndex - 1;
+      } else if (e.key === "ArrowRight" && colIndex < fieldsPerRow - 1) {
+        newColIndex = colIndex + 1;
+      }
+
+      const newInputIndex = newRowIndex * fieldsPerRow + newColIndex;
+      if (inputRefs.current[newInputIndex]) {
+        inputRefs.current[newInputIndex].focus();
+      }
+    } else if (e.key === "Enter" && colIndex === 0 && rowIndex === totalRows - 1) {
+      // Enter in Particulars of last row
+      addRow();
+      setFocusNewRow(true);
+    }
+  };
+
+  // Handle Enter key in Rate column
+  const handleRateKeyDown = (e, rowIndex, colIndex) => {
+    if (e.key === "Enter") {
+      if (rowIndex === rows.length - 1) {
+        addRow();
+        setFocusNewRow(true);
+      } else {
+        setFocusNextRowIndex(rowIndex + 1);
+      }
+    } else if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+      handleKeyDown(e, rowIndex, colIndex);
+    }
+  };
+
+  // Sort rows by particulars, total, type, and size
+  const sortRows = () => {
+    const sortedRows = [...rows].sort((a, b) => {
+      const particularsA = a.particulars.toLowerCase();
+      const particularsB = b.particulars.toLowerCase();
+      if (particularsA !== particularsB) {
+        return particularsA.localeCompare(particularsB);
+      }
+      if (a.total !== b.total) {
+        return b.total - a.total;
+      }
+      const typeA = a.type === "Other" ? a.customType.toLowerCase() : a.type.toLowerCase();
+      const typeB = b.type === "Other" ? b.customType.toLowerCase() : b.type.toLowerCase();
+      if (typeA !== typeB) {
+        return typeA.localeCompare(typeB);
+      }
+      const sizeA = a.size === "Other" ? a.customSize.toLowerCase() : a.size.toLowerCase();
+      const sizeB = b.size === "Other" ? b.customSize.toLowerCase() : b.size.toLowerCase();
+      return sizeA.localeCompare(sizeB);
+    });
+
+    const updatedRows = sortedRows.map((row, index) => ({
+      ...row,
+      id: index + 1
+    }));
+
+    setRows(updatedRows);
   };
 
   // Fetch bill by serial number
@@ -177,7 +272,17 @@ function BillMaker({ darkMode }) {
   const containerStyles = `min-h-screen p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto ${darkMode ? "bg-gray-900" : "bg-gray-100"}`;
   const cardStyles = `rounded-xl shadow-lg p-4 sm:p-6 ${darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border`;
   const inputStyles = `w-full p-2 sm:p-3 rounded-lg border ${darkMode ? "bg-gray-700 text-gray-100 border-gray-600" : "bg-gray-50 text-gray-900 border-gray-300"} focus:outline-none focus:ring-2 focus:ring-blue-500 transition`;
-  const buttonStyles = (color) => `px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-white font-medium transition-all duration-200 transform hover:scale-105 ${darkMode ? `bg-${color}-500 hover:bg-${color}-600` : `bg-${color}-600 hover:bg-${color}-700`}`;
+  const buttonStyles = (color) => {
+    const colorMap = {
+      green: darkMode ? "bg-green-600 hover:bg-green-700" : "bg-green-500 hover:bg-green-600",
+      red: darkMode ? "bg-red-600 hover:bg-red-700" : "bg-red-500 hover:bg-red-600",
+      blue: darkMode ? "bg-blue-600 hover:bg-blue-700" : "bg-blue-500 hover:bg-blue-600",
+      gray: darkMode ? "bg-gray-600 hover:bg-gray-700" : "bg-gray-500 hover:bg-gray-600",
+      purple: darkMode ? "bg-purple-600 hover:bg-purple-700" : "bg-purple-500 hover:bg-purple-600",
+      teal: darkMode ? "bg-teal-600 hover:bg-teal-700" : "bg-teal-500 hover:bg-teal-600",
+    };
+    return `px-4 py-2 sm:px-6 sm:py-3 rounded-lg text-white font-medium transition-all duration-200 transform hover:scale-105 ${colorMap[color]}`;
+  };
   const tableStyles = `w-full border-collapse text-sm ${darkMode ? "text-gray-100" : "text-gray-900"}`;
 
   return (
@@ -242,25 +347,27 @@ function BillMaker({ darkMode }) {
                       className={inputStyles}
                       value={row.particulars}
                       onChange={(e) => updateRow(index, "particulars", e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && index === rows.length - 1 && addRow()}
+                      onKeyDown={(e) => handleKeyDown(e, index, 0)}
                     />
                   </td>
-                  {["type", "size"].map((field) => (
+                  {["type", "size"].map((field, colIdx) => (
                     <td key={field} className="border p-2 sm:p-3">
                       {row[field] === "Other" ? (
                         <input
-                          ref={(el) => (inputRefs.current[index * 5 + (field === "type" ? 1 : 2)] = el)}
+                          ref={(el) => (inputRefs.current[index * 5 + (colIdx + 1)] = el)}
                           className={inputStyles}
                           value={row[`custom${field.charAt(0).toUpperCase() + field.slice(1)}`]}
                           onChange={(e) => updateRow(index, `custom${field.charAt(0).toUpperCase() + field.slice(1)}`, e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, index, colIdx + 1)}
                           placeholder={`Custom ${field}`}
                         />
                       ) : (
                         <select
-                          ref={(el) => (inputRefs.current[index * 5 + (field === "type" ? 1 : 2)] = el)}
+                          ref={(el) => (inputRefs.current[index * 5 + (colIdx + 1)] = el)}
                           className={inputStyles}
                           value={row[field]}
                           onChange={(e) => updateRow(index, field, e.target.value)}
+                          onKeyDown={(e) => handleKeyDown(e, index, colIdx + 1)}
                         >
                           <option value="">Select</option>
                           {(field === "type" ? typeOptions : sizeOptions).map(option => (
@@ -270,14 +377,15 @@ function BillMaker({ darkMode }) {
                       )}
                     </td>
                   ))}
-                  {["quantity", "rate"].map((field) => (
+                  {["quantity", "rate"].map((field, colIdx) => (
                     <td key={field} className="border p-2 sm:p-3">
                       <input
                         type="number"
-                        ref={(el) => (inputRefs.current[index * 5 + (field === "quantity" ? 3 : 4)] = el)}
+                        ref={(el) => (inputRefs.current[index * 5 + (colIdx + 3)] = el)}
                         className={inputStyles}
                         value={row[field]}
                         onChange={(e) => updateRow(index, field, e.target.value)}
+                        onKeyDown={(e) => handleRateKeyDown(e, index, colIdx + 3)}
                       />
                     </td>
                   ))}
@@ -306,11 +414,11 @@ function BillMaker({ darkMode }) {
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-4">
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
-            {["Add Row", "Remove Row", billId ? "Update & PDF" : "Save & PDF", "Clear Form", "See Invoice"].map((btn, idx) => (
+            {["Add Row", "Remove Row", billId ? "Update & PDF" : "Save & PDF", "Clear Form", "See Invoice", "Sort Data"].map((btn, idx) => (
               <button
                 key={btn}
-                onClick={[addRow, removeRow, generatePDF, clearForm, seeInvoice][idx]}
-                className={`${buttonStyles(["green", "red", "blue", "gray", "purple"][idx])} flex-1 sm:flex-none text-sm sm:text-base`}
+                onClick={[addRow, removeRow, generatePDF, clearForm, seeInvoice, sortRows][idx]}
+                className={`${buttonStyles(["green", "red", "blue", "gray", "purple", "teal"][idx])} flex-1 sm:flex-none text-sm sm:text-base`}
               >
                 {btn}
               </button>
