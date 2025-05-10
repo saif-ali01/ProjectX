@@ -15,10 +15,16 @@ import TransactionsTable from "../../components/expense-dashboard/TransactionsTa
 import UndoDeleteToast from "../../components/expense-dashboard/UndoDeleteToast";
 import DateRangePicker from "../../components/expense-dashboard/DateRangePicker";
 import Toast from "../../components/common/Toast";
+import moment from "moment-timezone";
 
 const ExpenseDashboard = ({ darkMode }) => {
   const navigate = useNavigate();
   const [summary, setSummary] = useState([]);
+  const [budgets, setBudgets] = useState({
+    daily: { date: "", totalEarnings: 0, totalExpenses: 0, budget: 0 },
+    monthly: { month: "", totalEarnings: 0, totalExpenses: 0, budget: 0 },
+    yearly: { year: "", totalEarnings: 0, totalExpenses: 0, budget: 0 },
+  });
   const [overTime, setOverTime] = useState([]);
   const [categories, setCategories] = useState([]);
   const [transactions, setTransactions] = useState([]);
@@ -62,18 +68,24 @@ const ExpenseDashboard = ({ darkMode }) => {
         setLoading(true);
         setError("");
 
-        const [transactionsRes, earningsRes, categoriesRes] = await Promise.all([
+        const formattedDate = moment(endDate).tz("Asia/Kolkata").format("YYYY-MM-DD");
+        const [budgetRes, transactionsRes, earningsRes, categoriesRes] = await Promise.all([
+          api.get(`/api/budget?date=${formattedDate}`, { withCredentials: true }),
           api.get("/api/expenses/transactions", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+            withCredentials: true,
           }),
           api.get("/api/expenses/earnings", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+            withCredentials: true,
           }),
           api.get("/api/expenses/categories", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+            withCredentials: true,
           }),
         ]);
 
+        setBudgets(budgetRes.data.data);
         const transactionsData = transactionsRes.data;
         const earningsData = earningsRes.data;
         const categoryData = categoriesRes.data;
@@ -89,8 +101,8 @@ const ExpenseDashboard = ({ darkMode }) => {
         const totalProfessional = transactionsData
           .filter((tx) => tx.type === "Professional")
           .reduce((sum, tx) => sum + tx.amount, 0);
-        const totalBudget = 200000;
-        const budgetUsed = ((totalPersonal + totalProfessional) / totalBudget) * 100;
+        const totalBudget = budgets.monthly.budget + budgets.monthly.totalExpenses; // Earnings
+        const budgetUsed = totalBudget > 0 ? ((totalPersonal + totalProfessional) / totalBudget) * 100 : 0;
         const categoryTotals = transactionsData.reduce((acc, tx) => {
           acc[tx.category] = (acc[tx.category] || 0) + tx.amount;
           return acc;
@@ -233,7 +245,7 @@ const ExpenseDashboard = ({ darkMode }) => {
         date: date.toISOString(),
         type: formData.type,
       };
-      const response = await api.post("/api/expenses", newTx);
+      const response = await api.post("/api/expenses", newTx, { withCredentials: true });
       setAllTransactions((prev) => [...prev, response.data]);
       setAddModalOpen(false);
       setCurrentPage(1);
@@ -264,7 +276,7 @@ const ExpenseDashboard = ({ darkMode }) => {
         amount: amount,
         type: selectedTransaction.type,
       };
-      const response = await api.put(`/api/expenses/${selectedTransaction.id}`, updatedTx);
+      const response = await api.put(`/api/expenses/${selectedTransaction.id}`, updatedTx, { withCredentials: true });
       setAllTransactions((prev) =>
         prev.map((tx) => (tx.id === selectedTransaction.id ? response.data : tx))
       );
@@ -280,7 +292,7 @@ const ExpenseDashboard = ({ darkMode }) => {
 
   const handleDeleteExpense = async () => {
     try {
-      await api.delete(`/api/expenses/${selectedTransaction.id}`);
+      await api.delete(`/api/expenses/${selectedTransaction.id}`, { withCredentials: true });
       setDeletedTransaction(selectedTransaction);
       setAllTransactions((prev) =>
         prev.filter((tx) => tx.id !== selectedTransaction.id)
@@ -300,7 +312,7 @@ const ExpenseDashboard = ({ darkMode }) => {
   const handleUndoDelete = async () => {
     try {
       if (deletedTransaction) {
-        const response = await api.post("/api/expenses", deletedTransaction);
+        const response = await api.post("/api/expenses", deletedTransaction, { withCredentials: true });
         setAllTransactions((prev) => [...prev, response.data]);
         setDeletedTransaction(null);
         setShowUndo(false);
@@ -324,14 +336,38 @@ const ExpenseDashboard = ({ darkMode }) => {
       date: tx.date,
       amount: parseFloat(tx.amount.replace("₹", "").replace(/,/g, "")),
     });
-    console.log("editexpense")
     setEditModalOpen(true);
   };
+
+  // Budget cards configuration
+  const budgetCards = [
+    {
+      title: "Daily Budget",
+      value: `₹${budgets.daily.budget.toLocaleString("en-IN")}`,
+      period: budgets.daily.date || "Today",
+      earnings: `₹${budgets.daily.totalEarnings.toLocaleString("en-IN")}`,
+      expenses: `₹${budgets.daily.totalExpenses.toLocaleString("en-IN")}`,
+    },
+    {
+      title: "Monthly Budget",
+      value: `₹${budgets.monthly.budget.toLocaleString("en-IN")}`,
+      period: budgets.monthly.month || "This Month",
+      earnings: `₹${budgets.monthly.totalEarnings.toLocaleString("en-IN")}`,
+      expenses: `₹${budgets.monthly.totalExpenses.toLocaleString("en-IN")}`,
+    },
+    {
+      title: "Yearly Budget",
+      value: `₹${budgets.yearly.budget.toLocaleString("en-IN")}`,
+      period: budgets.yearly.year || "This Year",
+      earnings: `₹${budgets.yearly.totalEarnings.toLocaleString("en-IN")}`,
+      expenses: `₹${budgets.yearly.totalExpenses.toLocaleString("en-IN")}`,
+    },
+  ];
 
   if (loading) {
     return (
       <div
-        className={`max-w-7xl mx-auto  min-h-screen transition-colors duration-300 ${
+        className={`max-w-7xl mx-auto min-h-screen transition-colors duration-300 ${
           darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
         }`}
       >
@@ -408,6 +444,30 @@ const ExpenseDashboard = ({ darkMode }) => {
       </header>
 
       <main className="mt-6">
+        <div
+          className={`rounded-lg shadow-md p-6 mb-6 border transition-colors duration-300 ${
+            darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+          }`}
+        >
+          <h2 className="text-xl font-semibold mb-4">Budget Overview</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {budgetCards.map((card, index) => (
+              <div
+                key={index}
+                className={`p-4 rounded-lg shadow-md ${
+                  darkMode ? "bg-gray-800/95 text-gray-200" : "bg-white text-gray-900"
+                }`}
+              >
+                <h3 className="text-lg font-semibold mb-2">{card.title}</h3>
+                <p className={`text-2xl font-bold ${card.value >= 0 ? "text-green-500" : "text-red-500"}`}>{card.value}</p>
+                <p className="text-sm">Period: {card.period}</p>
+                <p className="text-sm">Earnings: {card.earnings}</p>
+                <p className="text-sm">Expenses: {card.expenses}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div
           className={`rounded-lg shadow-md p-6 mb-6 border transition-colors duration-300 ${
             darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
