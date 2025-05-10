@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Plus, Trash2, Edit2, X } from "lucide-react";
 import { api } from "../../utils/api";
 import { format, parseISO } from "date-fns";
@@ -241,6 +241,7 @@ const AddWork = ({ darkMode }) => {
   const [updateWork, setUpdateWork] = useState(null);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(false);
+  const searchInputRef = useRef(null); // Ref for search input
 
   const fetchWorks = useCallback(async () => {
     try {
@@ -290,6 +291,20 @@ const AddWork = ({ darkMode }) => {
   useEffect(() => {
     fetchWorks();
   }, [fetchWorks]);
+
+  // Restore focus on search input after navigation (back button)
+  useEffect(() => {
+    const handlePopState = () => {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+    };
+  }, []);
 
   const calculateSrNo = (index) => {
     return (pagination.page - 1) * pagination.limit + index + 1;
@@ -480,16 +495,25 @@ const AddWork = ({ darkMode }) => {
             cursor: not-allowed;
             opacity: 0.5;
           }
+          .table-container {
+            overflow-x: auto;
+          }
+          table {
+            width: 100%;
+            table-layout: auto;
+          }
+          th, td {
+            white-space: normal;
+            word-break: break-word;
+            padding: 0.75rem;
+            min-width: 80px;
+          }
           @media (min-width: 1024px) {
             .table-container {
               overflow-x: visible;
             }
-            table {
-              width: 100%;
-              table-layout: auto;
-            }
             th, td {
-              white-space: nowrap;
+              min-width: 100px;
             }
           }
         `}
@@ -523,6 +547,8 @@ const AddWork = ({ darkMode }) => {
 
           <div className="flex flex-col gap-4 mb-6">
             <input
+              key="search-input"
+              ref={searchInputRef}
               type="text"
               placeholder="Search by party or particulars..."
               value={search}
@@ -590,7 +616,7 @@ const AddWork = ({ darkMode }) => {
             </div>
           </div>
 
-          <div className={`table-container rounded-xl shadow border ${darkMode ? "border-gray-700" : "border-gray-200"} overflow-x-auto`}>
+          <div className={`table-container rounded-xl shadow border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
             <table className="w-full text-sm border-collapse">
               <thead className={`${darkMode ? "bg-gray-700/50" : "bg-gray-50"}`}>
                 <tr>
@@ -599,7 +625,7 @@ const AddWork = ({ darkMode }) => {
                       key={header}
                       className={`p-3 text-left font-medium ${
                         darkMode ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-700"
-                      } whitespace-nowrap`}
+                      }`}
                     >
                       {header}
                     </th>
@@ -644,7 +670,7 @@ const AddWork = ({ darkMode }) => {
                       </span>
                     </td>
                     <td className={`p-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>{row.party}</td>
-                    <td className={`p-3 ${darkMode ? "text-gray-400" : "text-gray-600"} whitespace-nowrap`}>
+                    <td className={`p-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                       {format(parseISO(row.dateAndTime), "dd MMM yyyy, hh:mm a")}
                     </td>
                     <td className={`p-3 ${darkMode ? "text-gray-200" : "text-gray-900"}`}>{row.quantity}</td>
