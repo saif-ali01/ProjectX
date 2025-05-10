@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, Legend } from "recharts";
 import Toast from "../components/common/Toast";
-import moment from "moment-timezone";
 
 // Determine base URL for consistency
 const isProduction = process.env.NODE_ENV === "production";
@@ -60,10 +59,11 @@ const Home = ({ darkMode, toggleDarkMode }) => {
   const chartContainerRef = useRef(null);
   const [chartDimensions, setChartDimensions] = useState({ width: 500, height: 300 });
   const [toast, setToast] = useState(null);
-  const [budgets, setBudgets] = useState({
-    daily: { date: "", totalEarnings: 0, totalExpenses: 0, budget: 0 },
-    monthly: { month: "", totalEarnings: 0, totalExpenses: 0, budget: 0 },
-    yearly: { year: "", totalEarnings: 0, totalExpenses: 0, budget: 0 },
+  const [summaryData, setSummaryData] = useState({
+    totalRevenue: 0,
+    totalExpenses: 0,
+    pendingInvoices: 0,
+    activeClients: 0,
   });
   const [revenueData, setRevenueData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -80,8 +80,9 @@ const Home = ({ darkMode, toggleDarkMode }) => {
           originalRequest._retry = true;
           try {
             await api.post("/api/refresh-token", {}, { withCredentials: true });
-            return api(originalRequest);
+            return api(originalRequest); // Retry original request
           } catch (refreshError) {
+            console.error("Refresh token error:", refreshError);
             setToast({ message: "Session expired. Please sign in again.", type: "error", autoClose: 5000 });
             navigate("/signup?error=session_expired");
             return Promise.reject(refreshError);
@@ -90,6 +91,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
         return Promise.reject(error);
       }
     );
+
     return () => api.interceptors.response.eject(interceptor);
   }, [navigate]);
 
@@ -100,6 +102,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
         const response = await api.get("/api/me", { withCredentials: true });
         setUser(response.data);
       } catch (err) {
+        console.error("Fetch user error:", err);
         setToast({ message: "Please sign in to access the dashboard.", type: "error", autoClose: 5000 });
         navigate("/signup?error=unauthenticated");
       } finally {
@@ -109,22 +112,27 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     fetchUser();
   }, [navigate]);
 
-  // Fetch budget and revenue data
+  // Fetch dashboard data
   useEffect(() => {
     const fetchDashboardData = async () => {
       if (!user) return;
       try {
         setLoading(true);
         setError(null);
-        const budgetUrl = `/api/budget`;
+        const baseUrl = `/api/dashboard/summary`;
         const revenueUrl = `/api/dashboard/revenue-trend`;
 
-        const [budgetResponse, revenueResponse] = await Promise.all([
-          api.get(budgetUrl, { withCredentials: true }),
+        const [summaryResponse, revenueResponse] = await Promise.all([
+          api.get(baseUrl, { withCredentials: true }),
           api.get(revenueUrl, { withCredentials: true }),
         ]);
 
-        setBudgets(budgetResponse.data.data);
+        setSummaryData({
+          totalRevenue: summaryResponse.data.totalRevenue || 0,
+          totalExpenses: summaryResponse.data.totalExpenses || 0,
+          pendingInvoices: summaryResponse.data.pendingInvoices || 0,
+          activeClients: summaryResponse.data.activeClients || 0,
+        });
         setRevenueData(revenueResponse.data || []);
       } catch (err) {
         const errorMessage =
@@ -152,6 +160,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
         setChartDimensions({ width, height: Math.max(width * 0.6, 300) });
       }
     };
+
     updateDimensions();
     window.addEventListener("resize", updateDimensions);
     return () => window.removeEventListener("resize", updateDimensions);
@@ -193,41 +202,40 @@ const Home = ({ darkMode, toggleDarkMode }) => {
       setToast({ message: "Logged out successfully", type: "success", autoClose: 3000 });
       navigate("/signup");
     } catch (err) {
+      console.error("Logout error:", err);
       setToast({ message: "Failed to log out", type: "error", autoClose: 3000 });
     }
   };
 
-  // Budget cards configuration
-  const budgetCards = [
+  // Summary data configuration
+  const summaryCards = [
     {
-      title: "Daily Budget",
-      value: `₹${budgets.daily.budget.toLocaleString("en-IN")}`,
-      period: budgets.daily.date || "Today",
-      earnings: `₹${budgets.daily.totalEarnings.toLocaleString("en-IN")}`,
-      expenses: `₹${budgets.daily.totalExpenses.toLocaleString("en-IN")}`,
+      title: "Total Revenue",
+      value: `₹${summaryData.totalRevenue.toLocaleString("en-IN")}`,
       icon: <DollarSign className="w-6 h-6" />,
-      onClick: () => navigate("/expenses"),
+      onClick: () => navigate("/reports"),
       color: "from-blue-500 to-indigo-600",
     },
     {
-      title: "Monthly Budget",
-      value: `₹${budgets.monthly.budget.toLocaleString("en-IN")}`,
-      period: budgets.monthly.month || "This Month",
-      earnings: `₹${budgets.monthly.totalEarnings.toLocaleString("en-IN")}`,
-      expenses: `₹${budgets.monthly.totalExpenses.toLocaleString("en-IN")}`,
+      title: "Total Expenses",
+      value: `₹${summaryData.totalExpenses.toLocaleString("en-IN")}`,
       icon: <TrendingUp className="w-6 h-6" />,
       onClick: () => navigate("/expenses"),
-      color: "from-green-500 to-emerald-600",
+      color: "from-red-500 to-pink-600",
     },
     {
-      title: "Yearly Budget",
-      value: `₹${budgets.yearly.budget.toLocaleString("en-IN")}`,
-      period: budgets.yearly.year || "This Year",
-      earnings: `₹${budgets.yearly.totalEarnings.toLocaleString("en-IN")}`,
-      expenses: `₹${budgets.yearly.totalExpenses.toLocaleString("en-IN")}`,
+      title: "Pending Invoices",
+      value: summaryData.pendingInvoices.toString(),
       icon: <FileText className="w-6 h-6" />,
-      onClick: () => navigate("/expenses"),
+      onClick: () => navigate("/bill-section"),
       color: "from-yellow-500 to-orange-600",
+    },
+    {
+      title: "Active Clients",
+      value: summaryData.activeClients.toString(),
+      icon: <Users className="w-6 h-6" />,
+      onClick: () => navigate("/clients"),
+      color: "from-green-500 to-emerald-600",
     },
   ];
 
@@ -239,7 +247,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     { icon: <Settings className="w-6 h-6" />, title: "Settings", onClick: () => navigate("/settings"), color: "from-gray-600 to-gray-800" },
     { icon: <CreditCard className="w-6 h-6" />, title: "Expenses", onClick: () => navigate("/expenses"), color: "from-red-600 to-rose-700" },
     { icon: <FilePlus className="w-6 h-6" />, title: "Create Bill", onClick: () => navigate("/create-bill"), color: "from-purple-500 to-violet-600" },
-    { icon: <Briefcase className="w-6 h-6" />, title: "Add Today's Work", onClick: () => navigate("/addwork"), color: "from-teal-500 to-cyan-600" },
+    { icon: <Briefcase className="w-6 h-6" />, title: "Add Today's Work", onClick: () => navigate("/add-work"), color: "from-teal-500 to-cyan-600" },
     { icon: <LogOut className="w-6 h-6" />, title: "Logout", onClick: handleLogout, color: "from-red-500 to-red-700" },
   ];
 
@@ -247,6 +255,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     <ErrorBoundary darkMode={darkMode} navigate={navigate}>
       <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"} transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto p-4 sm:p-6">
+          {/* Loading State */}
           {loading && (
             <div className={`p-4 rounded-lg flex items-center animate-pulse ${darkMode ? "bg-blue-900 text-blue-200" : "bg-blue-100 text-blue-700"}`}>
               <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
@@ -261,6 +270,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
             </div>
           )}
 
+          {/* Error State */}
           {error && (
             <div className={`p-6 rounded-lg shadow-md ${darkMode ? "bg-red-900 text-red-200" : "bg-red-100 text-red-700"}`}>
               <h2 className={`text-lg font-semibold mb-3 ${darkMode ? "text-gray-100" : "text-gray-900"}`}>Error Loading Dashboard</h2>
@@ -277,35 +287,39 @@ const Home = ({ darkMode, toggleDarkMode }) => {
                 }}
                 className={`px-4 py-2 rounded-lg hover:scale-105 transition-colors ${darkMode ? "bg-gray-700 text-gray-100 hover:bg-gray-600" : "bg-gray-200 text-gray-900 hover:bg-gray-300"}`}
               >
-                Retry
+tei              Retry
               </button>
             </div>
           )}
 
+          {/* Main Content */}
           {!loading && !error && (
             <>
+              {/* Hero Section */}
               <div className={`rounded-2xl shadow-lg p-4 sm:p-6 lg:p-8 flex justify-center ${darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"} mb-8 border transition-colors`}>
                 <div className="flex flex-col sm:flex-row justify-center items-center gap-4 w-full max-w-4xl">
                   <div className="text-center sm:text-left">
                     <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2">Welcome to Star Printing Dashboard</h1>
                     <p className={`text-sm sm:text-base lg:text-lg text-center ${darkMode ? "text-gray-300" : "text-gray-700"}`}>
-                      Manage budgets, expenses, and business performance.
+                      Manage reports, expenses, and business performance.
                     </p>
                   </div>
                 </div>
               </div>
 
+              {/* Quick Actions */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 mb-10">
                 {actionCards.map((card, index) => (
                   <Card key={index} {...card} />
                 ))}
               </div>
 
+              {/* Summary Section */}
               <div className="mt-12">
-                <h2 className="text-xl sm:text-2xl font-semibold mb-6">Budget Overview</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-8">
-                  {budgetCards.map((card, index) => (
-                    <BudgetCard key={index} {...card} darkMode={darkMode} />
+                <h2 className="text-xl sm:text-2xl font-semibold mb-6">Business Summary</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
+                  {summaryCards.map((card, index) => (
+                    <SummaryCard key={index} {...card} darkMode={darkMode} />
                   ))}
                 </div>
                 <div
@@ -378,18 +392,17 @@ const Card = ({ icon, title, onClick, color }) => (
   </div>
 );
 
-// Reusable Budget Card Component
-const BudgetCard = ({ title, value, period, earnings, expenses, icon, onClick, color, darkMode }) => (
+// Reusable Summary Card Component
+const SummaryCard = ({ title, value, icon, onClick, color, darkMode }) => (
   <div
     onClick={onClick}
-    className={`cursor-pointer rounded-xl p-4 sm:p-6 shadow-md border hover:scale-[1.03] transition-transform flex flex-col ${darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"}`}
+    className={`cursor-pointer rounded-xl p-4 sm:p-6 shadow-md border hover:scale-[1.03] transition-transform flex items-center ${darkMode ? "bg-gray-800 border-gray-600" : "bg-white border-gray-200"}`}
   >
-    <div className={`p-3 rounded-full bg-gradient-to-br ${color} text-white mb-4 self-start`}>{icon}</div>
-    <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{title}</h3>
-    <p className={`text-xl sm:text-2xl font-bold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{value}</p>
-    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Period: {period}</p>
-    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Earnings: {earnings}</p>
-    <p className={`text-sm ${darkMode ? "text-gray-400" : "text-gray-600"}`}>Expenses: {expenses}</p>
+    <div className={`p-3 rounded-full bg-gradient-to-br ${color} text-white mr-4`}>{icon}</div>
+    <div>
+      <h3 className={`text-base sm:text-lg font-semibold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{title}</h3>
+      <p className={`text-xl sm:text-2xl font-bold ${darkMode ? "text-gray-100" : "text-gray-900"}`}>{value}</p>
+    </div>
   </div>
 );
 
