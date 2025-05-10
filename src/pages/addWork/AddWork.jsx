@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Plus, Trash2, Edit2, X } from "lucide-react";
 import { api } from "../../utils/api";
 import { format, parseISO } from "date-fns";
+import Toast from "../../components/common/Toast"; // New Toast component
 
 const typeColors = {
   Book: { light: "bg-blue-100 text-blue-800", dark: "bg-blue-800/80 text-blue-100" },
@@ -11,10 +12,17 @@ const typeColors = {
 };
 
 const sizeColors = {
-  "1/4": { light: "bg-teal-100 text-teal-800", dark: "bg-teal-800/80 text-teal-100" },
-  "1/3": { light: "bg-emerald-100 text-emerald-800", dark: "bg-emerald-800/80 text-emerald-100" },
-  "1/5": { light: "bg-amber-100 text-amber-800", dark: "bg-amber-800/80 text-amber-100" },
   "1/2": { light: "bg-sky-100 text-sky-800", dark: "bg-sky-800/80 text-sky-100" },
+  "1/3": { light: "bg-emerald-100 text-emerald-800", dark: "bg-emerald-800/80 text-emerald-100" },
+  "1/4": { light: "bg-teal-100 text-teal-800", dark: "bg-teal-800/80 text-teal-100" },
+  "1/5": { light: "bg-amber-100 text-amber-800", dark: "bg-amber-800/80 text-amber-100" },
+  "1/6": { light: "bg-lime-100 text-lime-800", dark: "bg-lime-800/80 text-lime-100" },
+  "1/8": { light: "bg-green-100 text-green-800", dark: "bg-green-800/80 text-green-100" },
+  "1/10": { light: "bg-yellow-100 text-yellow-800", dark: "bg-yellow-800/80 text-yellow-100" },
+  "1/12": { light: "bg-orange-100 text-orange-800", dark: "bg-orange-800/80 text-orange-100" },
+  "1/16": { light: "bg-red-100 text-red-800", dark: "bg-red-800/80 text-red-100" },
+  A4: { light: "bg-indigo-100 text-indigo-800", dark: "bg-indigo-800/80 text-indigo-100" },
+  Custom: { light: "bg-gray-100 text-gray-800", dark: "bg-gray-800/80 text-gray-100" },
 };
 
 const inrFormatter = new Intl.NumberFormat("en-IN", {
@@ -24,6 +32,20 @@ const inrFormatter = new Intl.NumberFormat("en-IN", {
 
 const Modal = React.memo(({ isOpen, onClose, title, work, setWork, onSubmit, darkMode, clients, loading }) => {
   if (!isOpen) return null;
+
+  const sizeOptions = [
+    "1/2",
+    "1/3",
+    "1/4",
+    "1/5",
+    "1/6",
+    "1/8",
+    "1/10",
+    "1/12",
+    "1/16",
+    "A4",
+    "Custom",
+  ];
 
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
@@ -59,17 +81,34 @@ const Modal = React.memo(({ isOpen, onClose, title, work, setWork, onSubmit, dar
                 </option>
               ))}
             </select>
-            <select
-              value={work.size}
-              onChange={(e) => setWork({ ...work, size: e.target.value })}
-              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {Object.keys(sizeColors).map((size) => (
-                <option key={size} value={size}>
-                  {size}
-                </option>
-              ))}
-            </select>
+            {work.sizeType === "custom" ? (
+              <input
+                type="text"
+                placeholder="Custom Size (e.g., 5x7cm)"
+                value={work.size}
+                onChange={(e) => setWork({ ...work, size: e.target.value })}
+                className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            ) : (
+              <select
+                value={work.size}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setWork({
+                    ...work,
+                    size: value,
+                    sizeType: value === "Custom" ? "custom" : "predefined",
+                  });
+                }}
+                className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {sizeOptions.map((size) => (
+                  <option key={size} value={size}>
+                    {size}
+                  </option>
+                ))}
+              </select>
+            )}
             <select
               value={work.partyId}
               onChange={(e) => {
@@ -162,31 +201,6 @@ const Modal = React.memo(({ isOpen, onClose, title, work, setWork, onSubmit, dar
   );
 });
 
-const Toast = ({ message, type, darkMode }) => {
-  if (!message) return null;
-
-  return (
-    <div
-      className={`fixed bottom-4 right-4 px-4 py-2 sm:px-5 sm:py-3 rounded-lg shadow-xl text-white flex items-center gap-2 animate-slide-in text-sm sm:text-base ${
-        type === "success"
-          ? `${darkMode ? "bg-green-600/95" : "bg-green-500/95"}`
-          : `${darkMode ? "bg-red-600/95" : "bg-red-500/95"}`
-      }`}
-    >
-      {type === "success" ? (
-        <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-        </svg>
-      ) : (
-        <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      )}
-      {message}
-    </div>
-  );
-};
-
 const AddWork = ({ darkMode }) => {
   const [pagination, setPagination] = useState({
     docs: [],
@@ -200,13 +214,15 @@ const AddWork = ({ darkMode }) => {
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState("All");
-  const [sortBy, setSortBy] = useState("");
+  const [filterPaid, setFilterPaid] = useState("All"); // New filter for paid/unpaid
+  const [sortBy, setSortBy] = useState("-dateAndTime"); // Default to descending date
   const [showAddModal, setShowAddModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [newWork, setNewWork] = useState({
     particulars: "",
     type: "Book",
     size: "1/4",
+    sizeType: "predefined",
     party: "",
     partyId: "",
     dateAndTime: new Date().toISOString(),
@@ -222,24 +238,29 @@ const AddWork = ({ darkMode }) => {
   const fetchWorks = useCallback(async () => {
     try {
       setLoading(true);
+      const paidParam =
+        filterPaid === "Paid" ? true : filterPaid === "Unpaid" ? false : undefined;
       const response = await api.get("/api/works", {
         params: {
           page: pagination.page,
           limit: pagination.limit,
           search,
           type: filterType === "All" ? undefined : filterType,
+          paid: paidParam,
           sort: sortBy || undefined,
         },
       });
       setPagination(response.data.data);
     } catch (error) {
       console.error("Fetch works error:", error.response?.data);
-      showToast(error.response?.data?.message || "Failed to fetch works. Please try again.", "error");
-      setPagination((prev) => ({ ...prev, docs: [] }));
+      setToast({
+        message: error.response?.data?.message || "Failed to fetch works. Please try again.",
+        type: "error",
+      });
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, search, filterType, sortBy]);
+  }, [pagination.page, pagination.limit, search, filterType, filterPaid, sortBy]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -249,7 +270,10 @@ const AddWork = ({ darkMode }) => {
         setClients(response.data.data.clients || []);
       } catch (error) {
         console.error("Fetch clients error:", error.response?.data);
-        showToast(error.response?.data?.message || "Failed to fetch clients. Please try again.", "error");
+        setToast({
+          message: error.response?.data?.message || "Failed to fetch clients. Please try again.",
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -279,13 +303,16 @@ const AddWork = ({ darkMode }) => {
 
   const showToast = useCallback((message, type) => {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
   }, []);
 
   const validateWork = useCallback(
     (work) => {
       if (!work.particulars || !work.partyId || !work.quantity || !work.rate || !work.dateAndTime) {
         showToast("Please fill all required fields", "error");
+        return false;
+      }
+      if (!work.size || (work.sizeType === "custom" && work.size.trim() === "")) {
+        showToast("Size must be specified", "error");
         return false;
       }
       if (isNaN(work.quantity) || work.quantity <= 0) {
@@ -324,6 +351,7 @@ const AddWork = ({ darkMode }) => {
           particulars: "",
           type: "Book",
           size: "1/4",
+          sizeType: "predefined",
           party: "",
           partyId: "",
           dateAndTime: new Date().toISOString(),
@@ -470,9 +498,35 @@ const AddWork = ({ darkMode }) => {
             }
           }
           .table-container {
-            position: relative;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
+          }
+          @media (min-width: 1024px) {
+            .table-container {
+              overflow-x: visible;
+            }
+            table {
+              width: 100%;
+              table-layout: auto;
+            }
+            th, td {
+              white-space: nowrap;
+            }
+            .min-w-100 {
+              min-width: 100px;
+            }
+            .min-w-120 {
+              min-width: 120px;
+            }
+            .min-w-150 {
+              min-width: 150px;
+            }
+            .min-w-80 {
+              min-width: 80px;
+            }
+            .min-w-60 {
+              min-width: 60px;
+            }
           }
         `}
       </style>
@@ -482,7 +536,7 @@ const AddWork = ({ darkMode }) => {
         }`}
       ></div>
 
-      <div className="relative max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className={`${darkMode ? "bg-gray-800/95" : "bg-white"} backdrop-blur-lg rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8`}>
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
             <div className="space-y-1 sm:space-y-2">
@@ -536,6 +590,19 @@ const AddWork = ({ darkMode }) => {
               </select>
 
               <select
+                value={filterPaid}
+                onChange={(e) => setFilterPaid(e.target.value)}
+                className={`flex-1 min-w-[120px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border text-sm sm:text-base ${
+                  darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
+                } focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm`}
+                disabled={loading}
+              >
+                <option value="All">All Payment Status</option>
+                <option value="Paid">Paid</option>
+                <option value="Unpaid">Unpaid</option>
+              </select>
+
+              <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
                 className={`flex-1 min-w-[120px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border text-sm sm:text-base ${
@@ -544,10 +611,13 @@ const AddWork = ({ darkMode }) => {
                 disabled={loading}
               >
                 <option value="">Sort By</option>
+                <option value="dateAndTime">Date (Oldest First)</option>
+                <option value="-dateAndTime">Date (Newest First)</option>
                 <option value="quantity">Quantity</option>
                 <option value="rate">Rate</option>
                 <option value="total">Total</option>
               </select>
+
               <select
                 value={pagination.limit}
                 onChange={(e) => setPagination((prev) => ({ ...prev, limit: Number(e.target.value), page: 1 }))}
@@ -567,21 +637,21 @@ const AddWork = ({ darkMode }) => {
               <thead className={`${darkMode ? "bg-gray-700/50" : "bg-gray-50"}`}>
                 <tr>
                   {[
-                    { label: "Sr No.", className: "sticky-column sr-no" },
-                    { label: "Particulars", className: "sticky-column particulars" },
-                    { label: "Type", className: "" },
-                    { label: "Size", className: "" },
-                    { label: "Party", className: "" },
-                    { label: "Date & Time", className: "" },
-                    { label: "Quantity", className: "" },
-                    { label: "Rate", className: "" },
-                    { label: "Total", className: "" },
-                    { label: "Paid", className: "" },
-                    { label: "Actions", className: "" },
+                    { label: "Sr No.", className: "sticky-column sr-no min-w-60" },
+                    { label: "Particulars", className: "sticky-column particulars min-w-150" },
+                    { label: "Type", className: "min-w-80" },
+                    { label: "Size", className: "min-w-80" },
+                    { label: "Party", className: "min-w-120" },
+                    { label: "Date & Time", className: "min-w-150" },
+                    { label: "Quantity", className: "min-w-80" },
+                    { label: "Rate", className: "min-w-80" },
+                    { label: "Total", className: "min-w-100" },
+                    { label: "Paid", className: "min-w-60" },
+                    { label: "Actions", className: "min-w-100" },
                   ].map((header) => (
                     <th
                       key={header.label}
-                      className={`p-2 sm:pfes-3 text-left font-semibold border-b ${
+                      className={`p-2 sm:p-3 text-left font-semibold border-b ${
                         darkMode ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-700"
                       } ${header.className}`}
                     >
@@ -621,7 +691,13 @@ const AddWork = ({ darkMode }) => {
                     <td className="p-2 sm:p-3">
                       <span
                         className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${
-                          darkMode ? sizeColors[row.size].dark : sizeColors[row.size].light
+                          sizeColors[row.size]
+                            ? darkMode
+                              ? sizeColors[row.size].dark
+                              : sizeColors[row.size].light
+                            : darkMode
+                            ? sizeColors["Custom"].dark
+                            : sizeColors["Custom"].light
                         }`}
                       >
                         {row.size}
@@ -652,7 +728,10 @@ const AddWork = ({ darkMode }) => {
                     <td className="p-2 sm:p-3 flex gap-1 sm:gap-2">
                       <button
                         onClick={() => {
-                          setUpdateWork(row);
+                          setUpdateWork({
+                            ...row,
+                            sizeType: sizeColors[row.size] ? "predefined" : "custom",
+                          });
                           setShowUpdateModal(true);
                         }}
                         className={`p-1 sm:p-1.5 rounded-lg hover:bg-blue-100/50 ${
@@ -742,6 +821,7 @@ const AddWork = ({ darkMode }) => {
               particulars: "",
               type: "Book",
               size: "1/4",
+              sizeType: "predefined",
               party: "",
               partyId: "",
               dateAndTime: new Date().toISOString(),
@@ -758,7 +838,14 @@ const AddWork = ({ darkMode }) => {
           loading={loading}
         />
 
-        <Toast message={toast?.message} type={toast?.type} darkMode={darkMode} />
+        {toast && (
+          <Toast
+            message={toast.message}
+            type={toast.type}
+            onClose={() => setToast(null)}
+            darkMode={darkMode}
+          />
+        )}
       </div>
     </div>
   );
