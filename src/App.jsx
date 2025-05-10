@@ -46,7 +46,6 @@ const ProtectedRoute = ({ children, darkMode }) => {
     checkAuth();
   }, [location]);
 
-
   if (isAuthenticated === null) {
     return (
       <div className={`min-h-screen ${darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"} flex items-center justify-center`}>
@@ -90,6 +89,7 @@ const Layout = ({ darkMode, toggleDarkMode }) => {
     { name: "Expenses", href: "/expenses", icon: FiDollarSign },
     { name: "Reports", href: "/reports", icon: FiPieChart },
     { name: "Charts", href: "/charts", icon: FiPieChart },
+    { name: "Add Work", href: "/addwork", icon: FiFileText }, // Added Add Work
   ];
 
   // Handle responsive layout
@@ -289,11 +289,11 @@ function App() {
             path="/clients"
             element={
               <ProtectedRoute darkMode={darkMode}>
-              <Clients darkMode={darkMode} />
+                <Clients darkMode={darkMode} />
               </ProtectedRoute>
             }
           />
-            <Route
+          <Route
             path="/work"
             element={
               <ProtectedRoute darkMode={darkMode}>

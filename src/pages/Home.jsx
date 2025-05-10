@@ -247,7 +247,7 @@ const Home = ({ darkMode, toggleDarkMode }) => {
     { icon: <Settings className="w-6 h-6" />, title: "Settings", onClick: () => navigate("/settings"), color: "from-gray-600 to-gray-800" },
     { icon: <CreditCard className="w-6 h-6" />, title: "Expenses", onClick: () => navigate("/expenses"), color: "from-red-600 to-rose-700" },
     { icon: <FilePlus className="w-6 h-6" />, title: "Create Bill", onClick: () => navigate("/create-bill"), color: "from-purple-500 to-violet-600" },
-    { icon: <Briefcase className="w-6 h-6" />, title: "Add Today's Work", onClick: () => navigate("/add-work"), color: "from-teal-500 to-cyan-600" },
+    { icon: <Briefcase className="w-6 h-6" />, title: "Add Today's Work", onClick: () => navigate("/addwork"), color: "from-teal-500 to-cyan-600" },
     { icon: <LogOut className="w-6 h-6" />, title: "Logout", onClick: handleLogout, color: "from-red-500 to-red-700" },
   ];
 
