@@ -65,18 +65,22 @@ const ExpenseDashboard = ({ darkMode }) => {
         const [transactionsRes, earningsRes, categoriesRes] = await Promise.all([
           api.get("/api/expenses/transactions", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+            withCredentials: true,
           }),
           api.get("/api/earnings", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+            withCredentials: true,
           }),
           api.get("/api/expenses/categories", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
+            withCredentials: true,
           }),
         ]);
 
-        const transactionsData = transactionsRes.data;
-        const earningsData = earningsRes.data;
-        const categoryData = categoriesRes.data;
+        const transactionsData = Array.isArray(transactionsRes.data) ? transactionsRes.data : [];
+        // Fix: Validate earnings response structure
+        const earningsData = earningsRes.data.success && Array.isArray(earningsRes.data.data) ? earningsRes.data.data : [];
+        const categoryData = Array.isArray(categoriesRes.data) ? categoriesRes.data : [];
 
         setAllTransactions(transactionsData);
         setEarnings(earningsData);
@@ -90,8 +94,10 @@ const ExpenseDashboard = ({ darkMode }) => {
           .filter((tx) => tx.type === "Professional")
           .reduce((sum, tx) => sum + tx.amount, 0);
         const totalEarnings = earningsData.reduce((sum, e) => sum + e.amount, 0);
-        const totalBudget = 200000;
-        const budgetUsed = ((totalPersonal + totalProfessional) / totalBudget) * 100;
+        // Dynamic budget: 80% of total earnings
+        const budgetPercentage = 0.8; // 80% of earnings
+        const totalBudget = totalEarnings * budgetPercentage;
+        const budgetUsed = totalBudget > 0 ? ((totalPersonal + totalProfessional) / totalBudget) * 100 : 0;
         const categoryTotals = transactionsData.reduce((acc, tx) => {
           acc[tx.category] = (acc[tx.category] || 0) + tx.amount;
           return acc;
@@ -122,6 +128,7 @@ const ExpenseDashboard = ({ darkMode }) => {
             title: "Budget Used",
             value: `${budgetUsed.toFixed(0)}%`,
             icon: "📈",
+            tooltip: `Based on ${budgetPercentage * 100}% of total earnings (₹${totalBudget.toLocaleString("en-IN")})`,
           },
           {
             title: "Highest Category",
@@ -141,6 +148,11 @@ const ExpenseDashboard = ({ darkMode }) => {
           )
         );
       } catch (err) {
+        console.error("Fetch error:", {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+        });
         const errorMessage = err.response?.data?.message || "Failed to load data";
         setError(errorMessage);
         setToast({ message: errorMessage, type: "error" });
@@ -203,7 +215,7 @@ const ExpenseDashboard = ({ darkMode }) => {
     filterType,
     searchQuery,
     currentPage,
-    transactionsPerPage,
+    // Fix: Removed transactionsPerPage from dependencies as it's a constant
   ]);
 
   const handleSort = (column) => {
@@ -239,7 +251,7 @@ const ExpenseDashboard = ({ darkMode }) => {
         date: date.toISOString(),
         type: formData.type,
       };
-      const response = await api.post("/api/expenses", newTx);
+      const response = await api.post("/api/expenses", newTx, { withCredentials: true });
       setAllTransactions((prev) => [...prev, response.data]);
       setAddModalOpen(false);
       setCurrentPage(1);
@@ -270,7 +282,9 @@ const ExpenseDashboard = ({ darkMode }) => {
         amount: amount,
         type: selectedTransaction.type,
       };
-      const response = await api.put(`/api/expenses/${selectedTransaction.id}`, updatedTx);
+      const response = await api.put(`/api/expenses/${selectedTransaction.id}`, updatedTx, {
+        withCredentials: true,
+      });
       setAllTransactions((prev) =>
         prev.map((tx) => (tx.id === selectedTransaction.id ? response.data : tx))
       );
@@ -286,7 +300,7 @@ const ExpenseDashboard = ({ darkMode }) => {
 
   const handleDeleteExpense = async () => {
     try {
-      await api.delete(`/api/expenses/${selectedTransaction.id}`);
+      await api.delete(`/api/expenses/${selectedTransaction.id}`, { withCredentials: true });
       setDeletedTransaction(selectedTransaction);
       setAllTransactions((prev) =>
         prev.filter((tx) => tx.id !== selectedTransaction.id)
@@ -306,7 +320,9 @@ const ExpenseDashboard = ({ darkMode }) => {
   const handleUndoDelete = async () => {
     try {
       if (deletedTransaction) {
-        const response = await api.post("/api/expenses", deletedTransaction);
+        const response = await api.post("/api/expenses", deletedTransaction, {
+          withCredentials: true,
+        });
         setAllTransactions((prev) => [...prev, response.data]);
         setDeletedTransaction(null);
         setShowUndo(false);
@@ -328,7 +344,8 @@ const ExpenseDashboard = ({ darkMode }) => {
     setSelectedTransaction({
       ...tx,
       date: tx.date,
-      amount: parseFloat(tx.amount.replace("₹", "").replace(/,/g, "")),
+      // Fix: Add validation for amount parsing
+      amount: typeof tx.amount === "string" ? parseFloat(tx.amount.replace("₹", "").replace(/,/g, "")) || 0 : 0,
     });
     setEditModalOpen(true);
   };
@@ -382,7 +399,7 @@ const ExpenseDashboard = ({ darkMode }) => {
           <h2 className="text-lg font-semibold mb-3">Error Loading Dashboard</h2>
           <p className="mb-4">{error}</p>
           <button
-            onClick={() => navigate("/bills")}
+            onClick={() => navigate("/")}
             className={`px-4 py-2 rounded-lg font-medium transition-colors hover:scale-105 ${
               darkMode
                 ? "bg-gray-700 text-gray-100 hover:bg-gray-600"
@@ -475,6 +492,7 @@ const ExpenseDashboard = ({ darkMode }) => {
             />
           </div>
           <div
+            // Fix: Corrected className syntax
             className={`rounded-lg shadow-md p-6 border transition-colors duration-300 ${
               darkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
             }`}
@@ -516,7 +534,6 @@ const ExpenseDashboard = ({ darkMode }) => {
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           selectedCategory={selectedCategory}
- segment:
           categories={categories}
           darkMode={darkMode}
         />
