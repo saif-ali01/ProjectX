@@ -66,7 +66,7 @@ const ExpenseDashboard = ({ darkMode }) => {
           api.get("/api/expenses/transactions", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
           }),
-          api.get("/api/expenses/earnings", {
+          api.get("/api/earnings", {
             params: { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
           }),
           api.get("/api/expenses/categories", {
@@ -516,6 +516,7 @@ const ExpenseDashboard = ({ darkMode }) => {
           isOpen={modalOpen}
           onClose={() => setModalOpen(false)}
           selectedCategory={selectedCategory}
+ segment:
           categories={categories}
           darkMode={darkMode}
         />
