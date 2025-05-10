@@ -89,6 +89,7 @@ const ExpenseDashboard = ({ darkMode }) => {
         const totalProfessional = transactionsData
           .filter((tx) => tx.type === "Professional")
           .reduce((sum, tx) => sum + tx.amount, 0);
+        const totalEarnings = earningsData.reduce((sum, e) => sum + e.amount, 0);
         const totalBudget = 200000;
         const budgetUsed = ((totalPersonal + totalProfessional) / totalBudget) * 100;
         const categoryTotals = transactionsData.reduce((acc, tx) => {
@@ -111,6 +112,11 @@ const ExpenseDashboard = ({ darkMode }) => {
             title: "Total Professional",
             value: `₹${totalProfessional.toLocaleString("en-IN")}`,
             icon: "📊",
+          },
+          {
+            title: "Total Earnings",
+            value: `₹${totalEarnings.toLocaleString("en-IN")}`,
+            icon: "💸",
           },
           {
             title: "Budget Used",
@@ -324,14 +330,13 @@ const ExpenseDashboard = ({ darkMode }) => {
       date: tx.date,
       amount: parseFloat(tx.amount.replace("₹", "").replace(/,/g, "")),
     });
-    console.log("editexpense")
     setEditModalOpen(true);
   };
 
   if (loading) {
     return (
       <div
-        className={`max-w-7xl mx-auto  min-h-screen transition-colors duration-300 ${
+        className={`max-w-7xl mx-auto min-h-screen transition-colors duration-300 ${
           darkMode ? "bg-gray-900 text-gray-100" : "bg-gray-50 text-gray-900"
         }`}
       >
