@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Outlet, NavLink, useLocation, Navigate, useNavigate } from "react-router-dom";
 import { FiHome, FiDollarSign, FiPieChart, FiFileText, FiSun, FiMoon, FiMenu, FiX } from "react-icons/fi";
 import { useState, useEffect } from "react";
+import { api } from "./utils/api";
 import BillMaker from "./pages/Bill/BillMaker";
 import BillSection from "./pages/Bill/BillList";
 import Home from "./pages/Home";
@@ -15,8 +16,8 @@ import ResetPassword from "./pages/auth/ResetPassword";
 import Settings from "./pages/setting/Settings";
 import Clients from "./pages/client/Clients";
 import NotFound from "./pages/notfound/NotFound";
-import { api } from "./utils/api";
 import Toast from "./components/common/Toast";
+import AddWork from "./pages/addWork/AddWork";
 
 // ProtectedRoute component to check authentication
 const ProtectedRoute = ({ children, darkMode }) => {
@@ -292,6 +293,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+            <Route
+            path="/work"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <AddWork darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/create-bill"
             element={
@@ -345,6 +354,14 @@ function App() {
             element={
               <ProtectedRoute darkMode={darkMode}>
                 <Reports darkMode={darkMode} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/addwork"
+            element={
+              <ProtectedRoute darkMode={darkMode}>
+                <AddWork darkMode={darkMode} />
               </ProtectedRoute>
             }
           />

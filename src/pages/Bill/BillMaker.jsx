@@ -299,7 +299,7 @@ const generatePDF = async () => {
     <div className={containerStyles}>
       <div className={cardStyles}>
         {/* Header */}
-        <h2 className={`text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 text-center ${darkMode ? "bg-blue-500 text-white" : "bg-blue-600 text-white"} p-3 rounded-lg flex items-center justify-center transition-all`}>
+        <h2 className={`text-xl sm:text-2xl lg:text-3xl font-bold mb-4 sm:mb-6 text-center ${darkMode ? "bg-blue-500 text-white" : "bg-blue-600 text-white"} p-3 rounded-lg flex items-center justify-center traansition-all`}>
           <img src={logo} alt="Logo" className="w-8 h-8 sm:w-10 sm:h-10 mr-2" />
           Star Printing - Bill Maker
         </h2>
