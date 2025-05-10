@@ -8,10 +8,10 @@ import SettingsPage from './pages/setting/SettingsPage.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {/* <App /> */}
+    <App />
     {/* <Clients darkMode={true} /> */}
 {/* <AddWork /> */}
-<SettingsPage darkMode={false}  setDarkMode={false}/>
+{/* <SettingsPage darkMode={false}  setDarkMode={false}/> */}
     {/* <Clients  darkMode={true} /> */}
   </StrictMode>,
 )
