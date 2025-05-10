@@ -4,25 +4,37 @@ import { api } from "../../utils/api";
 import { format, parseISO } from "date-fns";
 import Toast from "../../components/common/Toast";
 
+// Custom debounce hook
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+    return () => clearTimeout(handler);
+  }, [value, delay]);
+  return debouncedValue;
+};
+
 const typeColors = {
-  Book: { light: "bg-blue-100 text-blue-800", dark: "bg-blue-800/80 text-blue-100" },
-  Pad: { light: "bg-purple-100 text-purple-800", dark: "bg-purple-800/80 text-purple-100" },
-  Tag: { light: "bg-pink-100 text-pink-800", dark: "bg-pink-800/80 text-pink-100" },
-  Tog: { light: "bg-cyan-100 text-cyan-800", dark: "bg-cyan-800/80 text-cyan-100" },
+  Book: { light: "bg-blue-500 text-white", dark: "bg-blue-700 text-white" },
+  Pad: { light: "bg-purple-500 text-white", dark: "bg-purple-700 text-white" },
+  Tag: { light: "bg-pink-500 text-white", dark: "bg-pink-700 text-white" },
+  Tog: { light: "bg-cyan-500 text-white", dark: "bg-cyan-700 text-white" },
 };
 
 const sizeColors = {
-  "1/2": { light: "bg-sky-100 text-sky-800", dark: "bg-sky-800/80 text-sky-100" },
-  "1/3": { light: "bg-emerald-100 text-emerald-800", dark: "bg-emerald-800/80 text-emerald-100" },
-  "1/4": { light: "bg-teal-100 text-teal-800", dark: "bg-teal-800/80 text-teal-100" },
-  "1/5": { light: "bg-amber-100 text-amber-800", dark: "bg-amber-800/80 text-amber-100" },
-  "1/6": { light: "bg-lime-100 text-lime-800", dark: "bg-lime-800/80 text-lime-100" },
-  "1/8": { light: "bg-green-100 text-green-800", dark: "bg-green-800/80 text-green-100" },
-  "1/10": { light: "bg-yellow-100 text-yellow-800", dark: "bg-yellow-800/80 text-yellow-100" },
-  "1/12": { light: "bg-orange-100 text-orange-800", dark: "bg-orange-800/80 text-orange-100" },
-  "1/16": { light: "bg-red-100 text-red-800", dark: "bg-red-800/80 text-red-100" },
-  A4: { light: "bg-indigo-100 text-indigo-800", dark: "bg-indigo-800/80 text-indigo-100" },
-  Custom: { light: "bg-gray-100 text-gray-800", dark: "bg-gray-800/80 text-gray-100" },
+  "1/2": { light: "bg-sky-500 text-white", dark: "bg-sky-700 text-white" },
+  "1/3": { light: "bg-emerald-500 text-white", dark: "bg-emerald-700 text-white" },
+  "1/4": { light: "bg-teal-500 text-white", dark: "bg-teal-700 text-white" },
+  "1/5": { light: "bg-amber-500 text-white", dark: "bg-amber-700 text-white" },
+  "1/6": { light: "bg-lime-500 text-white", dark: "bg-lime-700 text-white" },
+  "1/8": { light: "bg-green-500 text-white", dark: "bg-green-700 text-white" },
+  "1/10": { light: "bg-yellow-500 text-white", dark: "bg-yellow-700 text-white" },
+  "1/12": { light: "bg-orange-500 text-white", dark: "bg-orange-700 text-white" },
+  "1/16": { light: "bg-red-500 text-white", dark: "bg-red-700 text-white" },
+  A4: { light: "bg-indigo-500 text-white", dark: "bg-indigo-700 text-white" },
+  Custom: { light: "bg-gray-500 text-white", dark: "bg-gray-700 text-white" },
 };
 
 const inrFormatter = new Intl.NumberFormat("en-IN", {
@@ -207,6 +219,7 @@ const AddWork = ({ darkMode }) => {
   });
   const [clients, setClients] = useState([]);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 500); // Debounce search input
   const [filterType, setFilterType] = useState("All");
   const [filterPaid, setFilterPaid] = useState("All");
   const [sortBy, setSortBy] = useState("-dateAndTime");
@@ -237,7 +250,7 @@ const AddWork = ({ darkMode }) => {
         params: {
           page: pagination.page,
           limit: pagination.limit,
-          search,
+          search: debouncedSearch,
           type: filterType === "All" ? undefined : filterType,
           paid: paidParam,
           sort: sortBy || undefined,
@@ -253,7 +266,7 @@ const AddWork = ({ darkMode }) => {
     } finally {
       setLoading(false);
     }
-  }, [pagination.page, pagination.limit, search, filterType, filterPaid, sortBy]);
+  }, [pagination.page, pagination.limit, debouncedSearch, filterType, filterPaid, sortBy]);
 
   useEffect(() => {
     const fetchClients = async () => {
@@ -284,7 +297,7 @@ const AddWork = ({ darkMode }) => {
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= pagination.totalPages) {
-      setPagination(prev => ({ ...prev, page: newPage }));
+      setPagination((prev) => ({ ...prev, page: newPage }));
     }
   };
 
@@ -292,129 +305,200 @@ const AddWork = ({ darkMode }) => {
     setToast({ message, type });
   }, []);
 
-  const validateWork = useCallback((work) => {
-    const requiredFields = ['particulars', 'partyId', 'quantity', 'rate', 'dateAndTime'];
-    const missingFields = requiredFields.filter(field => !work[field]);
-    
-    if (missingFields.length > 0) {
-      showToast("Please fill all required fields", "error");
-      return false;
-    }
-    
-    if (isNaN(work.quantity)) {
-      showToast("Quantity must be a valid number", "error");
-      return false;
-    }
-    
-    if (work.quantity <= 0) {
-      showToast("Quantity must be greater than 0", "error");
-      return false;
-    }
-    
-    if (isNaN(work.rate)) {
-      showToast("Rate must be a valid number", "error");
-      return false;
-    }
-    
-    if (work.rate <= 0) {
-      showToast("Rate must be greater than 0", "error");
-      return false;
-    }
-    
-    return true;
-  }, [showToast]);
+  const validateWork = useCallback(
+    (work) => {
+      const requiredFields = ["particulars", "partyId", "quantity", "rate", "dateAndTime"];
+      const missingFields = requiredFields.filter((field) => !work[field]);
 
-  const handleAddWork = useCallback(async () => {
-    if (!validateWork(newWork)) return;
-    try {
-      setLoading(true);
-      await api.post("/api/works", {
-        ...newWork,
-        quantity: parseInt(newWork.quantity),
-        rate: parseFloat(newWork.rate),
-        paid: newWork.paid,
-      });
-      setPagination(prev => ({ ...prev, page: 1 }));
-      await fetchWorks();
-      showToast("Work added successfully", "success");
-      setShowAddModal(false);
-      setNewWork({
-        particulars: "",
-        type: "Book",
-        size: "1/4",
-        sizeType: "predefined",
-        party: "",
-        partyId: "",
-        dateAndTime: new Date().toISOString(),
-        quantity: "",
-        rate: "",
-        currency: "INR",
-        paid: false,
-      });
-    } catch (error) {
-      console.error("Add work error:", error.response?.data);
-      const message = error.response?.data?.message || "Failed to add work. Please try again.";
-      showToast(message, "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [newWork, validateWork, showToast, fetchWorks]);
+      if (missingFields.length > 0) {
+        showToast("Please fill all required fields", "error");
+        return false;
+      }
 
-  const handleUpdateWork = useCallback(async () => {
-    if (!validateWork(updateWork)) return;
-    try {
-      setLoading(true);
-      await api.patch(`/api/works/${updateWork.id}`, {
-        ...updateWork,
-        quantity: parseInt(updateWork.quantity),
-        rate: parseFloat(updateWork.rate),
-        paid: updateWork.paid,
-      });
-      await fetchWorks();
-      showToast("Work updated successfully", "success");
-      setShowUpdateModal(false);
-      setUpdateWork(null);
-    } catch (error) {
-      console.error("Update work error:", error.response?.data);
-      showToast(error.response?.data?.message || "Failed to update work. Please try again.", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [updateWork, validateWork, showToast, fetchWorks]);
+      if (!work.size || (work.sizeType === "custom" && work.size.trim() === "")) {
+        showToast("Size must be specified", "error");
+        return false;
+      }
 
-  const handleDeleteWork = useCallback(async (id) => {
-    if (window.confirm("Are you sure you want to delete this work?")) {
+      if (isNaN(work.quantity)) {
+        showToast("Quantity must be a valid number", "error");
+        return false;
+      }
+
+      if (work.quantity <= 0) {
+        showToast("Quantity must be greater than 0", "error");
+        return false;
+      }
+
+      if (isNaN(work.rate)) {
+        showToast("Rate must be a valid number", "error");
+        return false;
+      }
+
+      if (work.rate <= 0) {
+        showToast("Rate must be greater than 0", "error");
+        return false;
+      }
+
+      return true;
+    },
+    [showToast]
+  );
+
+  const handleAddWork = useCallback(
+    async () => {
+      if (!validateWork(newWork)) return;
       try {
         setLoading(true);
-        await api.delete(`/api/works/${id}`);
+        await api.post("/api/works", {
+          ...newWork,
+          quantity: parseInt(newWork.quantity),
+          rate: parseFloat(newWork.rate),
+          paid: newWork.paid,
+        });
+        setPagination((prev) => ({ ...prev, page: 1 }));
         await fetchWorks();
-        showToast("Work deleted successfully", "success");
+        showToast("Work added successfully", "success");
+        setShowAddModal(false);
+        setNewWork({
+          particulars: "",
+          type: "Book",
+          size: "1/4",
+          sizeType: "predefined",
+          party: "",
+          partyId: "",
+          dateAndTime: new Date().toISOString(),
+          quantity: "",
+          rate: "",
+          currency: "INR",
+          paid: false,
+        });
       } catch (error) {
-        console.error("Delete work error:", error.response?.data);
-        showToast(error.response?.data?.message || "Failed to delete work. Please try again.", "error");
+        console.error("Add work error:", error.response?.data);
+        const message = error.response?.data?.message || "Failed to add work. Please try again.";
+        showToast(message, "error");
       } finally {
         setLoading(false);
       }
-    }
-  }, [showToast, fetchWorks]);
+    },
+    [newWork, validateWork, showToast, fetchWorks]
+  );
 
-  const handleTogglePaid = useCallback(async (id, currentPaid) => {
-    try {
-      setLoading(true);
-      await api.patch(`/api/works/${id}`, { paid: !currentPaid });
-      await fetchWorks();
-      showToast(`Work marked as ${!currentPaid ? "paid" : "unpaid"}`, "success");
-    } catch (error) {
-      console.error("Toggle paid error:", error.response?.data);
-      showToast(error.response?.data?.message || "Failed to update paid status. Please try again.", "error");
-    } finally {
-      setLoading(false);
-    }
-  }, [showToast, fetchWorks]);
+  const handleUpdateWork = useCallback(
+    async () => {
+      if (!validateWork(updateWork)) return;
+      try {
+        setLoading(true);
+        await api.patch(`/api/works/${updateWork.id}`, {
+          ...updateWork,
+          quantity: parseInt(updateWork.quantity),
+          rate: parseFloat(updateWork.rate),
+          paid: updateWork.paid,
+        });
+        await fetchWorks();
+        showToast("Work updated successfully", "success");
+        setShowUpdateModal(false);
+        setUpdateWork(null);
+      } catch (error) {
+        console.error("Update work error:", error.response?.data);
+        showToast(error.response?.data?.message || "Failed to update work. Please try again.", "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [updateWork, validateWork, showToast, fetchWorks]
+  );
+
+  const handleDeleteWork = useCallback(
+    async (id) => {
+      if (window.confirm("Are you sure you want to delete this work?")) {
+        try {
+          setLoading(true);
+          await api.delete(`/api/works/${id}`);
+          await fetchWorks();
+          showToast("Work deleted successfully", "success");
+        } catch (error) {
+          console.error("Delete work error:", error.response?.data);
+          showToast(error.response?.data?.message || "Failed to delete work. Please try again.", "error");
+        } finally {
+          setLoading(false);
+        }
+      }
+    },
+    [showToast, fetchWorks]
+  );
+
+  const handleTogglePaid = useCallback(
+    async (id, currentPaid) => {
+      try {
+        setLoading(true);
+        await api.patch(`/api/works/${id}`, { paid: !currentPaid });
+        await fetchWorks();
+        showToast(`Work marked as ${!currentPaid ? "paid" : "unpaid"}`, "success");
+      } catch (error) {
+        console.error("Toggle paid error:", error.response?.data);
+        showToast(error.response?.data?.message || "Failed to update paid status. Please try again.", "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [showToast, fetchWorks]
+  );
 
   return (
     <div className={`min-h-screen relative ${darkMode ? "dark" : ""}`}>
-      <div className="absolute inset-0 h-1/3 sm:h-1/4 bg-gradient-to-r from-blue-400 to-cyan-300 dark:from-gray-800 dark:to-gray-900"></div>
+      <style>
+        {`
+          .paid-checkbox {
+            appearance: none;
+            width: 1.1rem;
+            height: 1.1rem;
+            position: relative;
+            display: inline-block;
+            vertical-align: middle;
+            cursor: pointer;
+          }
+          .paid-checkbox.unpaid {
+            border: 2px solid red;
+            border-radius: 4px;
+            background-color: transparent;
+          }
+          .paid-checkbox.paid {
+            border: none;
+            background: none;
+          }
+          .paid-checkbox.paid::after {
+            content: "✔";
+            color: green;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1rem;
+          }
+          .paid-checkbox:disabled {
+            cursor: not-allowed;
+            opacity: 0.5;
+          }
+          @media (min-width: 1024px) {
+            .table-container {
+              overflow-x: visible;
+            }
+            table {
+              width: 100%;
+              table-layout: auto;
+            }
+            th, td {
+              white-space: nowrap;
+            }
+          }
+        `}
+      </style>
+      <div
+        className={`absolute inset-0 h-1/3 sm:h-1/4 bg-gradient-to-r ${
+          darkMode ? "from-blue-900 to-blue-950" : "from-blue-500 to-blue-700"
+        }`}
+      ></div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         <div className={`${darkMode ? "bg-gray-800/95" : "bg-white"} backdrop-blur-lg rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8`}>
@@ -455,7 +539,7 @@ const AddWork = ({ darkMode }) => {
                 onChange={(e) => setFilterType(e.target.value)}
                 className={`px-3 py-2 rounded-lg border text-sm ${
                   darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
-                }`}
+                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="All">All Types</option>
                 {Object.keys(typeColors).map((type) => (
@@ -468,7 +552,7 @@ const AddWork = ({ darkMode }) => {
                 onChange={(e) => setFilterPaid(e.target.value)}
                 className={`px-3 py-2 rounded-lg border text-sm ${
                   darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
-                }`}
+                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="All">All Payments</option>
                 <option value="Paid">Paid</option>
@@ -480,7 +564,7 @@ const AddWork = ({ darkMode }) => {
                 onChange={(e) => setSortBy(e.target.value)}
                 className={`px-3 py-2 rounded-lg border text-sm ${
                   darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
-                }`}
+                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value="-dateAndTime">Newest First</option>
                 <option value="dateAndTime">Oldest First</option>
@@ -494,10 +578,10 @@ const AddWork = ({ darkMode }) => {
 
               <select
                 value={pagination.limit}
-                onChange={(e) => setPagination(prev => ({ ...prev, limit: Number(e.target.value), page: 1 }))}
+                onChange={(e) => setPagination((prev) => ({ ...prev, limit: Number(e.target.value), page: 1 }))}
                 className={`px-3 py-2 rounded-lg border text-sm ${
                   darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
-                }`}
+                } focus:outline-none focus:ring-2 focus:ring-blue-500`}
               >
                 <option value={10}>10/page</option>
                 <option value={25}>25/page</option>
@@ -506,7 +590,7 @@ const AddWork = ({ darkMode }) => {
             </div>
           </div>
 
-          <div className={`rounded-xl shadow border ${darkMode ? "border-gray-700" : "border-gray-200"} overflow-x-auto`}>
+          <div className={`table-container rounded-xl shadow border ${darkMode ? "border-gray-700" : "border-gray-200"} overflow-x-auto`}>
             <table className="w-full text-sm border-collapse">
               <thead className={`${darkMode ? "bg-gray-700/50" : "bg-gray-50"}`}>
                 <tr>
@@ -571,13 +655,16 @@ const AddWork = ({ darkMode }) => {
                       {inrFormatter.format(row.quantity * row.rate)}
                     </td>
                     <td className="p-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={row.paid}
-                        onChange={() => handleTogglePaid(row.id, row.paid)}
-                        className={`paid-checkbox ${row.paid ? "paid" : "unpaid"}`}
-                        disabled={loading}
-                      />
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs cursor-pointer ${
+                          row.paid
+                            ? "bg-green-500 text-white"
+                            : "bg-red-500 text-white"
+                        }`}
+                        onClick={() => handleTogglePaid(row.id, row.paid)}
+                      >
+                        {row.paid ? "Paid" : "Unpaid"}
+                      </span>
                     </td>
                     <td className="p-3 flex gap-2">
                       <button
@@ -591,6 +678,7 @@ const AddWork = ({ darkMode }) => {
                         className={`p-1.5 hover:bg-blue-100/50 dark:hover:bg-blue-900/20 rounded-lg ${
                           darkMode ? "text-blue-400" : "text-blue-600"
                         }`}
+                        disabled={loading}
                       >
                         <Edit2 className="w-5 h-5" />
                       </button>
@@ -599,6 +687,7 @@ const AddWork = ({ darkMode }) => {
                         className={`p-1.5 hover:bg-red-100/50 dark:hover:bg-red-900/20 rounded-lg ${
                           darkMode ? "text-red-400" : "text-red-600"
                         }`}
+                        disabled={loading}
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
@@ -622,7 +711,8 @@ const AddWork = ({ darkMode }) => {
 
           <div className="flex justify-center sm:justify-between items-center mt-6 gap-4">
             <div className="hidden sm:block text-sm text-gray-500 dark:text-gray-400">
-              Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.totalDocs)} of {pagination.totalDocs} entries
+              Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}
+              {Math.min(pagination.page * pagination.limit, pagination.totalDocs)} of {pagination.totalDocs} entries
             </div>
             <div className="flex gap-2">
               <button
