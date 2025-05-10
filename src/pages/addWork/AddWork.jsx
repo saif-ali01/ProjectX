@@ -26,42 +26,48 @@ const Modal = React.memo(({ isOpen, onClose, title, work, setWork, onSubmit, dar
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className={`${darkMode ? "dark" : ""} bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl animate-fade-in`}>
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">{title}</h2>
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div
+        className={`${darkMode ? "dark" : ""} bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 w-full max-w-[90vw] sm:max-w-md shadow-2xl animate-fade-in`}
+      >
+        <div className="flex justify-between items-center mb-3 sm:mb-4">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-gray-100">{title}</h2>
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 sm:w-6 h-5 sm:h-6" />
           </button>
         </div>
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-3 sm:space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
             <input
               type="text"
               placeholder="Particulars"
               value={work.particulars}
               onChange={(e) => setWork({ ...work, particulars: e.target.value })}
-              className="w-full p-2.5 border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <select
               value={work.type}
               onChange={(e) => setWork({ ...work, type: e.target.value })}
-              className="w-full p-2.5 border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {Object.keys(typeColors).map((type) => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type}>
+                  {type}
+                </option>
               ))}
             </select>
             <select
               value={work.size}
               onChange={(e) => setWork({ ...work, size: e.target.value })}
-              className="w-full p-2.5 border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               {Object.keys(sizeColors).map((size) => (
-                <option key={size} value={size}>{size}</option>
+                <option key={size} value={size}>
+                  {size}
+                </option>
               ))}
             </select>
             <select
@@ -74,7 +80,7 @@ const Modal = React.memo(({ isOpen, onClose, title, work, setWork, onSubmit, dar
                   party: selectedClient ? selectedClient.name : "",
                 });
               }}
-              className="w-full p-2.5 border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Select Party</option>
               {clients.map((client) => (
@@ -87,27 +93,27 @@ const Modal = React.memo(({ isOpen, onClose, title, work, setWork, onSubmit, dar
               type="datetime-local"
               value={work.dateAndTime ? format(parseISO(work.dateAndTime), "yyyy-MM-dd'T'HH:mm") : ""}
               onChange={(e) => setWork({ ...work, dateAndTime: new Date(e.target.value).toISOString() })}
-              className="w-full p-2.5 border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="number"
               placeholder="Quantity"
               value={work.quantity}
               onChange={(e) => setWork({ ...work, quantity: e.target.value })}
-              className="w-full p-2.5 border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="number"
               placeholder="Rate (INR)"
               value={work.rate}
               onChange={(e) => setWork({ ...work, rate: e.target.value })}
-              className="w-full p-2.5 border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
             <input
               type="text"
               value="INR"
               disabled
-              className="w-full p-2.5 border rounded-lg bg-gray-100 dark:bg-gray-600 dark:border-gray-600 dark:text-gray-400 focus:outline-none"
+              className="w-full p-2 sm:p-2.5 text-sm sm:text-base border rounded-lg bg-gray-100 dark:bg-gray-600 dark:border-gray-600 dark:text-gray-400 focus:outline-none"
             />
             <label className="flex items-center gap-2">
               <input
@@ -117,32 +123,36 @@ const Modal = React.memo(({ isOpen, onClose, title, work, setWork, onSubmit, dar
                 className={`paid-checkbox ${work.paid ? "paid" : "unpaid"}`}
                 disabled={loading}
               />
-              <span className="text-gray-900 dark:text-gray-200">Paid</span>
+              <span className="text-sm sm:text-base text-gray-900 dark:text-gray-200">Paid</span>
             </label>
           </div>
         </div>
-        <div className="flex justify-end gap-3 mt-6">
+        <div className="flex justify-end gap-2 sm:gap-3 mt-4 sm:mt-6">
           <button
             onClick={onClose}
-            className="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors duration-200"
+            className="px-3 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors duration-200"
             disabled={loading}
           >
             Cancel
           </button>
           <button
             onClick={onSubmit}
-            className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg flex items-center gap-2 transition-all duration-200 disabled:opacity-50"
+            className="px-3 sm:px-5 py-2 sm:py-2.5 text-sm sm:text-base bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg flex items-center gap-2 transition-all duration-200 disabled:opacity-50"
             disabled={loading}
           >
             {loading ? (
-              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+              <svg className="w-4 sm:w-5 h-4 sm:h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
               </svg>
             ) : title === "Add Work" ? (
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 sm:w-5 h-4 sm:h-5" />
             ) : (
-              <Edit2 className="w-5 h-5" />
+              <Edit2 className="w-4 sm:w-5 h-4 sm:h-5" />
             )}
             {title === "Add Work" ? "Add" : "Update"}
           </button>
@@ -157,18 +167,18 @@ const Toast = ({ message, type, darkMode }) => {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 px-5 py-3 rounded-lg shadow-xl text-white flex items-center gap-2 animate-slide-in ${
+      className={`fixed bottom-4 right-4 px-4 py-2 sm:px-5 sm:py-3 rounded-lg shadow-xl text-white flex items-center gap-2 animate-slide-in text-sm sm:text-base ${
         type === "success"
           ? `${darkMode ? "bg-green-600/95" : "bg-green-500/95"}`
           : `${darkMode ? "bg-red-600/95" : "bg-red-500/95"}`
       }`}
     >
       {type === "success" ? (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
         </svg>
       ) : (
-        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 sm:w-5 h-4 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
         </svg>
       )}
@@ -177,7 +187,7 @@ const Toast = ({ message, type, darkMode }) => {
   );
 };
 
-const AddWork = ({ darkMode, setDarkMode }) => {
+const AddWork = ({ darkMode }) => {
   const [pagination, setPagination] = useState({
     docs: [],
     totalDocs: 0,
@@ -404,8 +414,8 @@ const AddWork = ({ darkMode, setDarkMode }) => {
         {`
           .paid-checkbox {
             appearance: none;
-            width: 1.2rem;
-            height: 1.2rem;
+            width: 1.1rem;
+            height: 1.1rem;
             position: relative;
             display: inline-block;
             vertical-align: middle;
@@ -427,75 +437,108 @@ const AddWork = ({ darkMode, setDarkMode }) => {
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 1.2rem;
+            font-size: 1rem;
           }
           .paid-checkbox:disabled {
             cursor: not-allowed;
             opacity: 0.5;
           }
+          .sticky-column {
+            position: sticky;
+            z-index: 1;
+            background: inherit;
+          }
+          .sticky-column.sr-no {
+            left: 0;
+            min-width: 60px;
+            width: 60px;
+          }
+          .sticky-column.particulars {
+            left: 60px;
+            min-width: 120px;
+            width: 120px;
+          }
+          @media (min-width: 640px) {
+            .sticky-column.sr-no {
+              min-width: 80px;
+              width: 80px;
+            }
+            .sticky-column.particulars {
+              left: 80px;
+              min-width: 150px;
+              width: 150px;
+            }
+          }
+          .table-container {
+            position: relative;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+          }
         `}
       </style>
       <div
-        className={`absolute inset-0 h-1/4 bg-gradient-to-r ${
+        className={`absolute inset-0 h-1/3 sm:h-1/4 bg-gradient-to-r ${
           darkMode ? "from-gray-800 to-gray-900" : "from-blue-400 to-cyan-300"
         }`}
       ></div>
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className={`${darkMode ? "bg-gray-800/95" : "bg-white"} backdrop-blur-lg rounded-2xl shadow-xl p-6 sm:p-8`}>
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
+      <div className="relative max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+        <div className={`${darkMode ? "bg-gray-800/95" : "bg-white"} backdrop-blur-lg rounded-2xl shadow-xl p-4 sm:p-6 lg:p-8`}>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 sm:mb-6 gap-3 sm:gap-4">
+            <div className="space-y-1 sm:space-y-2">
+              <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-600 to-blue-500 bg-clip-text text-transparent">
                 Work Management
               </h1>
-              <p className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-sm`}>
+              <p className={`${darkMode ? "text-gray-400" : "text-gray-600"} text-xs sm:text-sm`}>
                 {pagination.totalDocs} entries found • Page {pagination.page} of {pagination.totalPages}
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => setShowAddModal(true)}
-                className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
+                className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white px-3 sm:px-5 py-2 sm:py-2.5 rounded-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition-all text-sm sm:text-base"
                 disabled={loading}
               >
-                <Plus className="w-5 h-5" />
+                <Plus className="w-4 sm:w-5 h-4 sm:h-5" />
                 <span className="hidden sm:inline">Add Work</span>
               </button>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="flex flex-col gap-3 sm:gap-4 mb-4 sm:mb-6">
             <input
               type="text"
               placeholder="Search by party or particulars..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className={`flex-1 px-4 py-2.5 rounded-lg border ${
+              className={`w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border text-sm sm:text-base ${
                 darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
               } focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm`}
               disabled={loading}
             />
 
-            <div className="flex gap-2 sm:gap-3">
+            <div className="flex flex-wrap gap-2 sm:gap-3">
               <select
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
-                className={`px-4 py-2.5 rounded-lg border ${
+                className={`flex-1 min-w-[120px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border text-sm sm:text-base ${
                   darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
                 } focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm`}
                 disabled={loading}
               >
                 <option value="All">All Types</option>
                 {Object.keys(typeColors).map((type) => (
-                  <option key={type} value={type}>{type}</option>
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
                 ))}
               </select>
 
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className={`px-4 py-2.5 rounded-lg border ${
+                className={`flex-1 min-w-[120px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border text-sm sm:text-base ${
                   darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
                 } focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm`}
                 disabled={loading}
@@ -508,9 +551,9 @@ const AddWork = ({ darkMode, setDarkMode }) => {
               <select
                 value={pagination.limit}
                 onChange={(e) => setPagination((prev) => ({ ...prev, limit: Number(e.target.value), page: 1 }))}
-                className={`px-4 py-2.5 rounded-lg border ${
+                className={`flex-1 min-w-[120px] px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg border text-sm sm:text-base ${
                   darkMode ? "border-gray-700 bg-gray-700/50 text-gray-100" : "border-gray-200 text-gray-900"
-                }`}
+                } focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm`}
               >
                 <option value={10}>10 per page</option>
                 <option value={25}>25 per page</option>
@@ -519,18 +562,30 @@ const AddWork = ({ darkMode, setDarkMode }) => {
             </div>
           </div>
 
-          <div className={`overflow-x-auto rounded-xl shadow border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
-            <table className="w-full text-sm border-collapse">
+          <div className={`table-container rounded-xl shadow border ${darkMode ? "border-gray-700" : "border-gray-200"}`}>
+            <table className="w-full text-xs sm:text-sm border-collapse">
               <thead className={`${darkMode ? "bg-gray-700/50" : "bg-gray-50"}`}>
                 <tr>
-                  {["Sr No.", "Particulars", "Type", "Size", "Party", "Date & Time", "Quantity", "Rate", "Total", "Paid", "Actions"].map((header) => (
+                  {[
+                    { label: "Sr No.", className: "sticky-column sr-no" },
+                    { label: "Particulars", className: "sticky-column particulars" },
+                    { label: "Type", className: "" },
+                    { label: "Size", className: "" },
+                    { label: "Party", className: "" },
+                    { label: "Date & Time", className: "" },
+                    { label: "Quantity", className: "" },
+                    { label: "Rate", className: "" },
+                    { label: "Total", className: "" },
+                    { label: "Paid", className: "" },
+                    { label: "Actions", className: "" },
+                  ].map((header) => (
                     <th
-                      key={header}
-                      className={`p-3 text-left font-semibold border-b ${
+                      key={header.label}
+                      className={`p-2 sm:pfes-3 text-left font-semibold border-b ${
                         darkMode ? "border-gray-700 text-gray-300" : "border-gray-200 text-gray-700"
-                      }`}
+                      } ${header.className}`}
                     >
-                      {header}
+                      {header.label}
                     </th>
                   ))}
                 </tr>
@@ -542,28 +597,50 @@ const AddWork = ({ darkMode, setDarkMode }) => {
                     key={row.id}
                     className={`border-b ${darkMode ? "border-gray-700 hover:bg-gray-700/30" : "border-gray-200 hover:bg-gray-100"}`}
                   >
-                    <td className={`p-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>{calculateSrNo(index)}</td>
-                    <td className={`p-3 font-medium ${darkMode ? "text-gray-200" : "text-gray-900"}`}>{row.particulars}</td>
-                    <td className="p-3">
-                      <span className={`px-3 py-1 rounded-full text-sm ${darkMode ? typeColors[row.type].dark : typeColors[row.type].light}`}>
+                    <td
+                      className={`p-2 sm:p-3 sticky-column sr-no ${darkMode ? "text-gray-400 bg-gray-800/95" : "text-gray-600 bg-white"}`}
+                    >
+                      {calculateSrNo(index)}
+                    </td>
+                    <td
+                      className={`p-2 sm:p-3 sticky-column particulars font-medium ${
+                        darkMode ? "text-gray-200 bg-gray-800/95" : "text-gray-900 bg-white"
+                      }`}
+                    >
+                      {row.particulars}
+                    </td>
+                    <td className="p-2 sm:p-3">
+                      <span
+                        className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${
+                          darkMode ? typeColors[row.type].dark : typeColors[row.type].light
+                        }`}
+                      >
                         {row.type}
                       </span>
                     </td>
-                    <td className="p-3">
-                      <span className={`px-3 py-1 rounded-full text-sm ${darkMode ? sizeColors[row.size].dark : sizeColors[row.size].light}`}>
+                    <td className="p-2 sm:p-3">
+                      <span
+                        className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${
+                          darkMode ? sizeColors[row.size].dark : sizeColors[row.size].light
+                        }`}
+                      >
                         {row.size}
                       </span>
                     </td>
-                    <td className={`p-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>{row.party}</td>
-                    <td className={`p-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                    <td className={`p-2 sm:p-3 ${darkMode ? "text-gray-400" : "text-gray-600"}`}>{row.party}</td>
+                    <td className={`p-2 sm:p-3 ${darkMode ? "text-gray-400" : "text-gray-600"} whitespace-nowrap`}>
                       {format(parseISO(row.dateAndTime), "dd MMM yyyy, hh:mm a")}
                     </td>
-                    <td className={`p-3 ${darkMode ? "text-gray-200" : "text-gray-900"}`}>{row.quantity}</td>
-                    <td className={`p-3 ${darkMode ? "text-gray-200" : "text-gray-900"}`}>{inrFormatter.format(row.rate)}</td>
-                    <td className={`p-3 font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
+                    <td className={`p-2 sm:p-3 ${darkMode ? "text-gray-200" : "text-gray-900"}`}>{row.quantity}</td>
+                    <td className={`p-2 sm:p-3 ${darkMode ? "text-gray-200" : "text-gray-900"}`}>
+                      {inrFormatter.format(row.rate)}
+                    </td>
+                    <td
+                      className={`p-2 sm:p-3 font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}
+                    >
                       {inrFormatter.format(row.quantity * row.rate)}
                     </td>
-                    <td className="p-3 text-center">
+                    <td className="p-2 sm:p-3 text-center">
                       <input
                         type="checkbox"
                         checked={row.paid}
@@ -572,27 +649,31 @@ const AddWork = ({ darkMode, setDarkMode }) => {
                         disabled={loading}
                       />
                     </td>
-                    <td className="p-3 flex gap-2">
+                    <td className="p-2 sm:p-3 flex gap-1 sm:gap-2">
                       <button
                         onClick={() => {
                           setUpdateWork(row);
                           setShowUpdateModal(true);
                         }}
-                        className={`p-1.5 rounded-lg hover:bg-blue-100/50 ${
-                          darkMode ? "text-blue-400 hover:text-blue-300 hover:bg-blue-900/20" : "text-blue-600 hover:text-blue-700"
+                        className={`p-1 sm:p-1.5 rounded-lg hover:bg-blue-100/50 ${
+                          darkMode
+                            ? "text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+                            : "text-blue-600 hover:text-blue-700"
                         }`}
                         disabled={loading}
                       >
-                        <Edit2 className="w-5 h-5" />
+                        <Edit2 className="w-4 sm:w-5 h-4 sm:h-5" />
                       </button>
                       <button
                         onClick={() => handleDeleteWork(row.id)}
-                        className={`p-1.5 rounded-lg hover:bg-red-100/50 ${
-                          darkMode ? "text-red-400 hover:text-red-300 hover:bg-red-900/20" : "text-red-600 hover:text-red-700"
+                        className={`p-1 sm:p-1.5 rounded-lg hover:bg-red-100/50 ${
+                          darkMode
+                            ? "text-red-400 hover:text-red-300 hover:bg-red-900/20"
+                            : "text-red-600 hover:text-red-700"
                         }`}
                         disabled={loading}
                       >
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 sm:w-5 h-4 sm:h-5" />
                       </button>
                     </td>
                   </tr>
@@ -600,7 +681,10 @@ const AddWork = ({ darkMode, setDarkMode }) => {
 
                 {pagination.docs.length === 0 && (
                   <tr>
-                    <td colSpan="11" className={`p-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    <td
+                      colSpan="11"
+                      className={`p-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}
+                    >
                       {loading ? "Loading..." : "No matching records found"}
                     </td>
                   </tr>
@@ -609,10 +693,10 @@ const AddWork = ({ darkMode, setDarkMode }) => {
             </table>
           </div>
 
-          <div className="flex justify-between items-center mt-6">
+          <div className="flex flex-col sm:flex-row justify-between items-center mt-4 sm:mt-6 gap-3">
             <button
               onClick={handlePrevPage}
-              className={`px-4 py-2 rounded-lg ${
+              className={`px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base ${
                 pagination.hasPrevPage
                   ? "bg-blue-500 hover:bg-blue-600 text-white"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
@@ -623,7 +707,7 @@ const AddWork = ({ darkMode, setDarkMode }) => {
             </button>
             <button
               onClick={handleNextPage}
-              className={`px-4 py-2 rounded-lg ${
+              className={`px-3 sm:px-4 py-2 rounded-lg text-sm sm:text-base ${
                 pagination.hasNextPage
                   ? "bg-blue-500 hover:bg-blue-600 text-white"
                   : "bg-gray-300 text-gray-500 cursor-not-allowed"
