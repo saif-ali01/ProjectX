@@ -455,12 +455,6 @@ const AddWork = ({ darkMode, setDarkMode }) => {
 
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setDarkMode(!darkMode)}
-                className="p-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 transition-colors"
-              >
-                {darkMode ? "🌞" : "🌙"}
-              </button>
-              <button
                 onClick={() => setShowAddModal(true)}
                 className="bg-gradient-to-r from-purple-500 to-blue-600 hover:from-purple-600 hover:to-blue-700 text-white px-5 py-2.5 rounded-lg flex items-center gap-2 shadow-lg hover:shadow-xl transition-all"
                 disabled={loading}
