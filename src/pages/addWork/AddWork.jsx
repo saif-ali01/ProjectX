@@ -504,11 +504,17 @@ const AddWork = ({ darkMode }) => {
           td {
             font-size: 0.875rem;
           }
+          .particulars-cell {
+            max-width: 250px;
+          }
           /* Responsive adjustments */
           @media (max-width: 1024px) {
             th, td {
               padding: 0.5rem;
               font-size: 0.75rem;
+            }
+            .particulars-cell {
+              max-width: 200px;
             }
           }
           @media (max-width: 640px) {
@@ -550,6 +556,10 @@ const AddWork = ({ darkMode }) => {
             }
             td:last-child {
               border-bottom: none;
+            }
+            .particulars-cell {
+              max-width: none;
+              white-space: normal;
             }
             .actions-cell {
               display: flex;
@@ -664,7 +674,7 @@ const AddWork = ({ darkMode }) => {
             <table>
               <thead>
                 <tr>
-                  {["Sr No.", "Particulars", "Type", "Size", "Party", "Date & Time", "Quantity", "Rate", "Total", "Paid", "Actions"].map((header) => (
+                  {["Sr No.", "Particulars", "Party", "Date & Time", "Quantity", "Rate", "Total", "Paid", "Actions"].map((header) => (
                     <th key={header}>{header}</th>
                   ))}
                 </tr>
@@ -675,31 +685,32 @@ const AddWork = ({ darkMode }) => {
                     <td data-label="Sr No." className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                       {calculateSrNo(index)}
                     </td>
-                    <td data-label="Particulars" className={`${darkMode ? "text-gray-200" : "text-gray-900"} font-medium`}>
-                      {row.particulars}
-                    </td>
-                    <td data-label="Type">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs ${
-                          darkMode ? typeColors[row.type].dark : typeColors[row.type].light
-                        }`}
-                      >
-                        {row.type}
-                      </span>
-                    </td>
-                    <td data-label="Size">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs ${
-                          sizeColors[row.size]
-                            ? darkMode
-                              ? sizeColors[row.size].dark
-                              : sizeColors[row.size].light
-                            : darkMode
-                            ? sizeColors["Custom"].dark
-                            : sizeColors["Custom"].light
-                        }`}
-                      >
-                        {row.size}
+                    <td data-label="Particulars" className={`particulars-cell ${darkMode ? "text-gray-200" : "text-gray-900"} font-medium`}>
+                      {row.particulars}{" "}
+                      <span className="inline-flex items-center gap-1">
+                        (
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs ${
+                            darkMode ? typeColors[row.type].dark : typeColors[row.type].light
+                          }`}
+                        >
+                          {row.type}
+                        </span>
+                        ,
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-xs ${
+                            sizeColors[row.size]
+                              ? darkMode
+                                ? sizeColors[row.size].dark
+                                : sizeColors[row.size].light
+                              : darkMode
+                              ? sizeColors["Custom"].dark
+                              : sizeColors["Custom"].light
+                          }`}
+                        >
+                          {row.size}
+                        </span>
+                        )
                       </span>
                     </td>
                     <td data-label="Party" className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>{row.party}</td>
@@ -753,7 +764,7 @@ const AddWork = ({ darkMode }) => {
                 ))}
                 {pagination.docs.length === 0 && (
                   <tr>
-                    <td colSpan="11" className={`p-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
+                    <td colSpan="9" className={`p-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                       {loading ? "Loading..." : "No records found"}
                     </td>
                   </tr>
