@@ -4,7 +4,7 @@ import { api } from "../../utils/api";
 import { format, parseISO } from "date-fns";
 import Toast from "../../components/common/Toast";
 
-// Custom debounce hook (unchanged)
+// Custom debounce hook
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
@@ -16,7 +16,6 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-// Type and size colors (unchanged)
 const typeColors = {
   Book: { light: "bg-blue-500 text-white", dark: "bg-blue-700 text-white" },
   Pad: { light: "bg-purple-500 text-white", dark: "bg-purple-700 text-white" },
@@ -43,11 +42,172 @@ const inrFormatter = new Intl.NumberFormat("en-IN", {
   currency: "INR",
 });
 
-// Modal component (unchanged for brevity)
-// ... (Modal code remains the same)
+const Modal = React.memo(({ isOpen, onClose, title, work, setWork, onSubmit, darkMode, clients, loading }) => {
+  if (!isOpen) return null;
+
+  const sizeOptions = [
+    "1/2",
+    "1/3",
+    "1/4",
+    "1/5",
+    "1/6",
+    "1/8",
+    "1/10",
+    "1/12",
+    "1/16",
+    "A4",
+    "Custom",
+  ];
+
+  return (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div
+        className={`${darkMode ? "dark" : ""} bg-white dark:bg-gray-800 rounded-xl p-4 sm:p-6 w-full max-w-[95vw] md:max-w-md shadow-2xl animate-fade-in`}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{title}</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+          >
+            <X className="w-6 h-6" />
+          </button>
+        </div>
+        <div className="space-y-4">
+          <div className="grid grid-cols-1 gap-4">
+            <input
+              type="text"
+              placeholder="Particulars"
+              value={work.particulars}
+              onChange={(e) => setWork({ ...work, particulars: e.target.value })}
+              className="w-full p-2.5 text-sm border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <select
+              value={work.type}
+              onChange={(e) => setWork({ ...work, type: e.target.value })}
+              className="w-full p-2.5 text-sm border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {Object.keys(typeColors).map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            {work.sizeType === "custom" ? (
+              <input
+                type="text"
+                placeholder="Custom Size (e.g., 5x7cm)"
+                value={work.size}
+                onChange={(e) => setWork({ ...work, size: e.target.value })}
+                className="w-full p-2.5 text-sm border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            ) : (
+              <select
+                value={work.size}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  setWork({
+                    ...work,
+                    size: value,
+                    sizeType: value === "Custom" ? "custom" : "predefined",
+                  });
+                }}
+                className="w-full p-2.5 text-sm border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                {sizeOptions.map((size) => (
+                  <option key={size} value={size}>{size}</option>
+                ))}
+              </select>
+            )}
+            <select
+              value={work.partyId}
+              onChange={(e) => {
+                const selectedClient = clients.find((client) => client.id === e.target.value);
+                setWork({
+                  ...work,
+                  partyId: e.target.value,
+                  party: selectedClient ? selectedClient.name : "",
+                });
+              }}
+              className="w-full p-2.5 text-sm border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="">Select Party</option>
+              {clients.map((client) => (
+                <option key={client.id} value={client.id}>{client.name}</option>
+              ))}
+            </select>
+            <input
+              type="datetime-local"
+              value={work.dateAndTime ? format(parseISO(work.dateAndTime), "yyyy-MM-dd'T'HH:mm") : ""}
+              onChange={(e) => setWork({ ...work, dateAndTime: new Date(e.target.value).toISOString() })}
+              className="w-full p-2.5 text-sm border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="number"
+              placeholder="Quantity"
+              value={work.quantity}
+              onChange={(e) => setWork({ ...work, quantity: e.target.value })}
+              className="w-full p-2.5 text-sm border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="number"
+              placeholder="Rate (INR)"
+              value={work.rate}
+              onChange={(e) => setWork({ ...work, rate: e.target.value })}
+              className="w-full p-2.5 text-sm border rounded-lg dark:bg-gray-700/90 dark:border-gray-600 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <input
+              type="text"
+              value="INR"
+              disabled
+              className="w-full p-2.5 text-sm border rounded-lg bg-gray-100 dark:bg-gray-600 dark:border-gray-600 dark:text-gray-400 focus:outline-none"
+            />
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={work.paid}
+                onChange={(e) => setWork({ ...work, paid: e.target.checked })}
+                className={`paid-checkbox ${work.paid ? "paid" : "unpaid"}`}
+                disabled={loading}
+              />
+              <span className="text-sm text-gray-900 dark:text-gray-200">Paid</span>
+            </label>
+          </div>
+        </div>
+        <div className="flex justify-end gap-3 mt-6">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 rounded-lg transition-colors duration-200"
+            disabled={loading}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSubmit}
+            className="px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-lg flex items-center gap-2 transition-all duration-200 disabled:opacity-50"
+            disabled={loading}
+          >
+            {loading ? (
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                ></path>
+              </svg>
+            ) : title === "Add Work" ? (
+              <Plus className="w-5 h-5" />
+            ) : (
+              <Edit2 className="w-5 h-5" />
+            )}
+            {title === "Add Work" ? "Add" : "Update"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+});
 
 const AddWork = ({ darkMode }) => {
-  // State and hooks (unchanged for brevity)
   const [pagination, setPagination] = useState({
     docs: [],
     totalDocs: 0,
@@ -83,7 +243,6 @@ const AddWork = ({ darkMode }) => {
   const [loading, setLoading] = useState(false);
   const searchInputRef = useRef(null);
 
-  // Fetch works and clients (unchanged for brevity)
   const fetchWorks = useCallback(async () => {
     try {
       setLoading(true);
@@ -361,7 +520,7 @@ const AddWork = ({ darkMode }) => {
               overflow-x: auto;
             }
             thead {
-              display: none; /* Hide header on mobile */
+              display: none;
             }
             tbody, tr, td {
               display: block;
@@ -513,8 +672,12 @@ const AddWork = ({ darkMode }) => {
               <tbody>
                 {pagination.docs.map((row, index) => (
                   <tr key={row.id}>
-                    <td data-label="Sr No.">{calculateSrNo(index)}</td>
-                    <td data-label="Particulars">{row.particulars}</td>
+                    <td data-label="Sr No." className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>
+                      {calculateSrNo(index)}
+                    </td>
+                    <td data-label="Particulars" className={`${darkMode ? "text-gray-200" : "text-gray-900"} font-medium`}>
+                      {row.particulars}
+                    </td>
                     <td data-label="Type">
                       <span
                         className={`px-3 py-1 rounded-full text-xs ${
@@ -539,13 +702,17 @@ const AddWork = ({ darkMode }) => {
                         {row.size}
                       </span>
                     </td>
-                    <td data-label="Party">{row.party}</td>
-                    <td data-label="Date & Time">
+                    <td data-label="Party" className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>{row.party}</td>
+                    <td data-label="Date & Time" className={`${darkMode ? "text-gray-400" : "text-gray-600"}`}>
                       {format(parseISO(row.dateAndTime), "dd MMM yyyy, hh:mm a")}
                     </td>
-                    <td data-label="Quantity">{row.quantity}</td>
-                    <td data-label="Rate">{inrFormatter.format(row.rate)}</td>
-                    <td data-label="Total">{inrFormatter.format(row.quantity * row.rate)}</td>
+                    <td data-label="Quantity" className={`${darkMode ? "text-gray-200" : "text-gray-900"}`}>{row.quantity}</td>
+                    <td data-label="Rate" className={`${darkMode ? "text-gray-200" : "text-gray-900"}`}>
+                      {inrFormatter.format(row.rate)}
+                    </td>
+                    <td data-label="Total" className={`font-semibold ${darkMode ? "text-blue-400" : "text-blue-600"}`}>
+                      {inrFormatter.format(row.quantity * row.rate)}
+                    </td>
                     <td data-label="Paid">
                       <span
                         className={`px-3 py-1 rounded-full text-xs cursor-pointer ${
@@ -586,7 +753,7 @@ const AddWork = ({ darkMode }) => {
                 ))}
                 {pagination.docs.length === 0 && (
                   <tr>
-                    <td colSpan="11" className="p-4 text-center">
+                    <td colSpan="11" className={`p-4 text-center ${darkMode ? "text-gray-400" : "text-gray-500"}`}>
                       {loading ? "Loading..." : "No records found"}
                     </td>
                   </tr>
